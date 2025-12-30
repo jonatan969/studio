@@ -14,17 +14,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, User } from 'lucide-react';
 
-interface User {
+interface StoredUser {
   name: string;
-  email: string;
+  nickname: string;
   isAdmin: boolean;
+  photo?: string;
 }
 
 export function PageHeader() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<StoredUser | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -41,7 +42,7 @@ export function PageHeader() {
   };
   
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('');
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
   }
 
   return (
@@ -60,6 +61,7 @@ export function PageHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
+                       <AvatarImage src={user.photo} alt={user.name} />
                        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                     </Avatar>
                     <span className="hidden md:inline-block">{user.name}</span>
@@ -70,10 +72,15 @@ export function PageHeader() {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground">@{user.nickname}</p>
                     </div>
                   </DropdownMenuLabel>
                   {user.isAdmin && <DropdownMenuLabel className="text-xs text-accent font-bold">Admin</DropdownMenuLabel>}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => router.push('/profile')} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />

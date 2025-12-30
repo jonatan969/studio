@@ -16,9 +16,8 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -30,9 +29,14 @@ export default function SignupPage() {
     // Simulate API call
     setTimeout(() => {
       // In a real app, you'd send this to your backend to create a user
-      const newUser = { email, password, name, isAdmin: false };
-      console.log('New user created:', newUser);
+      const newUser = { nickname, password, name: nickname, isAdmin: false, photo: '' };
       
+      if (typeof window !== 'undefined') {
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        users.push(newUser);
+        localStorage.setItem('users', JSON.stringify(users));
+      }
+
       toast({
         title: 'Account Created!',
         description: 'You can now log in with your new credentials.',
@@ -67,26 +71,14 @@ export default function SignupPage() {
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
                <div className="space-y-2 text-left">
-                <Label htmlFor="name">Display Name</Label>
+                <Label htmlFor="nickname">Nickname</Label>
                 <Input
-                  id="name"
+                  id="nickname"
                   type="text"
-                  placeholder="Your Name"
+                  placeholder="Your Nickname"
                   required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2 text-left">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="player@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
                   disabled={isLoading}
                 />
               </div>

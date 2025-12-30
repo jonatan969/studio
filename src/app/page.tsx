@@ -14,24 +14,28 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // In a real app, this would be in a user store/context and fetched from a server
-const FAKE_USER = {
-  email: 'admin@versus.com',
-  password: 'password',
-  name: 'Admin',
-  isAdmin: true,
-};
+const FAKE_USERS = [
+  {
+    nickname: 'Admin',
+    password: 'password',
+    name: 'Admin',
+    isAdmin: true,
+    photo: '',
+  },
+  {
+    nickname: 'Player1',
+    password: 'password',
+    name: 'Player 1',
+    isAdmin: false,
+    photo: '',
+  },
+];
 
-const FAKE_PLAYER = {
-  email: 'player@versus.com',
-  password: 'password',
-  name: 'Player 1',
-  isAdmin: false,
-};
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,25 +47,28 @@ export default function LoginPage() {
     setIsLoading(true);
 
     setTimeout(() => {
-      if (
-        (email === FAKE_USER.email && password === FAKE_USER.password) ||
-        (email === FAKE_PLAYER.email && password === FAKE_PLAYER.password)
-      ) {
-        const user = email === FAKE_USER.email ? FAKE_USER : FAKE_PLAYER;
-        // In a real app, you'd use a session cookie or JWT
-        localStorage.setItem('user', JSON.stringify(user));
-        toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${user.name}!`,
-        });
-        router.push('/dashboard');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: 'Invalid email or password. Please try again.',
-        });
-        setIsLoading(false);
+      // In a real app, you would have a user list
+      if (typeof window !== 'undefined') {
+        const existingUsers = JSON.parse(localStorage.getItem('users') || JSON.stringify(FAKE_USERS));
+        const user = existingUsers.find(
+          (u: any) => u.nickname === nickname && u.password === password
+        );
+
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+          toast({
+            title: 'Login Successful',
+            description: `Welcome back, ${user.name}!`,
+          });
+          router.push('/dashboard');
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: 'Invalid nickname or password. Please try again.',
+          });
+          setIsLoading(false);
+        }
       }
     }, 1000);
   };
@@ -90,14 +97,14 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               <div className="space-y-2 text-left">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="nickname">Nickname</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@versus.com"
+                  id="nickname"
+                  type="text"
+                  placeholder="Your Nickname"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
@@ -136,8 +143,8 @@ export default function LoginPage() {
                 </Link>
               </p>
               <div className="text-xs text-muted-foreground mt-2 text-center">
-                <p>Admin: admin@versus.com / password</p>
-                <p>Player: player@versus.com / password</p>
+                <p>Admin: Admin / password</p>
+                <p>Player: Player1 / password</p>
               </div>
             </CardFooter>
           </form>

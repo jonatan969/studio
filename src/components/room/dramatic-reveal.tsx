@@ -4,6 +4,8 @@ import { generateDramaticReveal, GenerateDramaticRevealInput } from '@/ai/flows/
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Character, SuperArt } from '@/lib/game-data';
+import { Card } from '../ui/card';
+import { SuperArtIcon } from './super-art-icon';
 
 interface DramaticRevealProps {
   team1SuperArt: SuperArt;
@@ -66,7 +68,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
 
   if (showAll) {
     return (
-        <div className="w-full h-full bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in-50 duration-500">
+        <div className="absolute inset-0 z-50 w-full h-full bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in-50 duration-500 overflow-y-auto">
             <h2 className="text-5xl font-headline font-bold text-accent mb-8">Final Selections</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
                 {['Orange', 'Purple'].map(teamName => (
@@ -74,16 +76,19 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
                         <h3 className={`text-3xl font-headline mb-4 ${teamName === 'Orange' ? 'text-orange-400' : 'text-purple-400'}`}>Team {teamName}</h3>
                         <div className="space-y-4">
                             {allPicks.filter(p => p.team === teamName).map(({character, superArt}, index) => (
-                                <div key={index} className="bg-card p-4 rounded-lg flex justify-between items-center">
+                                <Card key={index} className="bg-card/80 p-4 rounded-lg flex justify-between items-center">
                                     <p className="font-bold text-lg">{character.name}</p>
-                                    <p className="text-accent font-semibold">{superArt.name}</p>
-                                </div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-accent font-semibold">{superArt.name}</p>
+                                        <SuperArtIcon art={superArt} />
+                                    </div>
+                                </Card>
                             ))}
                         </div>
                     </div>
                 ))}
             </div>
-            <Button onClick={onComplete} className="mt-12">Return to Dashboard</Button>
+            <Button onClick={onComplete} className="mt-12">Return to Lobby</Button>
         </div>
     );
   }

@@ -13,7 +13,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 interface User {
   name: string;
-  email: string;
+  nickname: string;
   isAdmin: boolean;
 }
 
@@ -60,9 +60,7 @@ export default function DashboardPage() {
   }
 
   const handleCreateRoom = () => {
-    // In a real app, this would call an API to create a room
-    const newRoomId = `new-room-${Date.now()}`;
-    router.push(`/room/${newRoomId}`);
+    router.push(`/create-room`);
   };
 
   return (
@@ -71,12 +69,10 @@ export default function DashboardPage() {
       <main className="container py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-headline text-4xl font-bold">Lobby</h1>
-          {user.isAdmin && (
-            <Button onClick={handleCreateRoom} className="font-bold">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Room
-            </Button>
-          )}
+          <Button onClick={handleCreateRoom} className="font-bold">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Room
+          </Button>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
