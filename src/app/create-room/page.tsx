@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,8 @@ import { Loader2, Upload } from 'lucide-react';
 import { TEAM_LOGOS } from '@/lib/game-data';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useUser, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'Room name must be at least 3 characters'),
@@ -34,6 +36,8 @@ type CreateRoomForm = z.infer<typeof createRoomSchema>;
 export default function CreateRoomPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
   const [team1LogoPreview, setTeam1LogoPreview] = useState<string | null>(null);
   const [team2LogoPreview, setTeam2LogoPreview] = useState<string | null>(null);
@@ -62,19 +66,55 @@ export default function CreateRoomPage() {
   const playersPerTeam = watch('playersPerTeam');
   const spectatorLimit = watch('spectatorLimit');
 
-  const onSubmit = (data: CreateRoomForm) => {
+  const onSubmit = async (data: CreateRoomForm) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a room.' });
+        return;
+    }
     setIsLoading(true);
-    console.log('Creating room with data:', data);
-    toast({
-      title: 'Room Created!',
-      description: `The room "${data.roomName}" has been successfully created.`,
-    });
+    
+    try {
+        const roomsColRef = collection(firestore, 'rooms');
+        const newRoomRef = doc(roomsColRef);
+        const newRoomId = newRoomRef.id;
 
-    // Simulate API call
-    setTimeout(() => {
-      const newRoomId = data.roomName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
-      router.push(`/room/${newRoomId}`);
-    }, 1500);
+        const roomData = {
+            id: newRoomId,
+            name: data.roomName,
+            adminId: user.uid,
+            team1Name: data.team1Name,
+            team2Name: data.team2Name,
+            team1Logo: data.team1Logo,
+            team2Logo: data.team2Logo,
+            playersPerTeam: data.playersPerTeam,
+            spectatorLimit: data.spectatorLimit,
+            status: 'waiting',
+            playerCount: 1,
+            phase: 'PREP',
+        };
+        
+        await setDocumentNonBlocking(newRoomRef, roomData, {});
+
+        const playerRef = doc(firestore, `rooms/${newRoomId}/players`, user.uid);
+        const playerData = {
+            uid: user.uid,
+            nickname: user.displayName,
+            photoURL: user.photoURL,
+            team: data.joinPreference,
+            isReady: false,
+        };
+        await setDocumentNonBlocking(playerRef, playerData, {});
+
+        toast({
+          title: 'Room Created!',
+          description: `The room "${data.roomName}" has been successfully created.`,
+        });
+
+        router.push(`/room/${newRoomId}`);
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: 'Error Creating Room', description: error.message });
+        setIsLoading(false);
+    }
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, team: 'team1' | 'team2') => {
@@ -94,6 +134,8 @@ export default function CreateRoomPage() {
           reader.readAsDataURL(file);
       }
   };
+
+  if(isUserLoading) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin" /></div>
 
   return (
     <div className="min-h-screen bg-background">
@@ -261,7 +303,7 @@ export default function CreateRoomPage() {
               </div>
 
 
-              <Button type="submit" className="w-full font-bold" disabled={isLoading}>
+              <Button type="submit" className="w-full font-bold" disabled={isLoading || isUserLoading}>
                 {isLoading ? <Loader2 className="animate-spin" /> : 'Create Room'}
               </Button>
             </form>

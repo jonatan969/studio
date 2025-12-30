@@ -7,54 +7,45 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
-import { PlusCircle, Users } from 'lucide-react';
+import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useUser, useCollection, useFirestore } from '@/firebase';
+import { collection, query, where, DocumentData } from 'firebase/firestore';
 
-interface User {
+interface RoomData {
+  id: string;
   name: string;
-  nickname: string;
-  isAdmin: boolean;
+  playersPerTeam: number;
+  team1Name: string;
+  team2Name: string;
+  status: 'Waiting' | 'Drafting' | 'Finished';
+  playerCount: number;
 }
 
-const mockRooms = [
-  {
-    id: 'clash-of-titans',
-    name: 'Clash of Titans',
-    players: 10,
-    maxPlayers: 12,
-    spectators: 2,
-    status: 'Drafting',
-    imageId: 'room-1',
-  },
-  {
-    id: 'cyberpunk-showdown',
-    name: 'Cyberpunk Showdown',
-    players: 5,
-    maxPlayers: 12,
-    status: 'Waiting for players',
-    spectators: 0,
-    imageId: 'room-2',
-  },
-];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const roomsQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'rooms');
+  }, [firestore]);
+
+  const { data: rooms, isLoading: isLoadingRooms } = useCollection<RoomData>(roomsQuery);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
+    if (!isUserLoading && !user) {
       router.push('/');
     }
-  }, [router]);
+  }, [user, isUserLoading, router]);
 
-  if (!user) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p>Loading...</p>
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -75,9 +66,25 @@ export default function DashboardPage() {
           </Button>
         </div>
 
+        {isLoadingRooms && (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i}><CardContent className="h-64 animate-pulse bg-muted rounded-lg"></CardContent></Card>
+                ))}
+            </div>
+        )}
+
+        {!isLoadingRooms && (!rooms || rooms.length === 0) && (
+            <div className="text-center py-16">
+                <h2 className="text-2xl font-semibold">No rooms available</h2>
+                <p className="text-muted-foreground mt-2">Why not create one?</p>
+            </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {mockRooms.map((room) => {
-             const roomImage = PlaceHolderImages.find(p => p.id === room.imageId);
+          {rooms?.map((room) => {
+             const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
+             const maxPlayers = room.playersPerTeam * 2;
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors">
                 <CardHeader className="p-0">
@@ -98,7 +105,7 @@ export default function DashboardPage() {
                    <div className="p-6 pb-0">
                      <CardTitle className="font-headline text-2xl">{room.name}</CardTitle>
                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {room.players}/{room.maxPlayers}</span>
+                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {room.playerCount || 0}/{maxPlayers}</span>
                      </CardDescription>
                    </div>
                 </CardHeader>

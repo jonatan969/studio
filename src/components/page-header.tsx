@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { VersusLogo } from '@/components/icons/logo';
@@ -14,35 +13,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ChevronDown, LogOut, User } from 'lucide-react';
-
-interface StoredUser {
-  name: string;
-  nickname: string;
-  isAdmin: boolean;
-  photo?: string;
-}
+import { ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth, useUser } from '@/firebase';
 
 export function PageHeader() {
   const router = useRouter();
-  const [user, setUser] = useState<StoredUser | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      router.push('/');
-    }
-  }, [router]);
+  const auth = useAuth();
+  const { user } = useUser();
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    auth.signOut();
     router.push('/');
   };
   
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
   }
 
   return (
@@ -61,24 +46,23 @@ export function PageHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                       <AvatarImage src={user.photo} alt={user.name} />
-                       <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                       <AvatarImage src={user.photoURL || undefined} alt={user.displayName || ''} />
+                       <AvatarFallback>{getInitials(user.displayName || '')}</AvatarFallback>
                     </Avatar>
-                    <span className="hidden md:inline-block">{user.name}</span>
+                    <span className="hidden md:inline-block">{user.displayName}</span>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">@{user.nickname}</p>
+                      <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                     </div>
                   </DropdownMenuLabel>
-                  {user.isAdmin && <DropdownMenuLabel className="text-xs text-accent font-bold">Admin</DropdownMenuLabel>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => router.push('/profile')} className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
+                    <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

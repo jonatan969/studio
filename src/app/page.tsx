@@ -12,66 +12,44 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// In a real app, this would be in a user store/context and fetched from a server
-const FAKE_USERS = [
-  {
-    nickname: 'Admin',
-    password: 'password',
-    name: 'Admin',
-    isAdmin: true,
-    photo: '',
-  },
-  {
-    nickname: 'Player1',
-    password: 'password',
-    name: 'Player 1',
-    isAdmin: false,
-    photo: '',
-  },
-];
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [nickname, setNickname] = useState('');
+  const auth = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      // In a real app, you would have a user list
-      if (typeof window !== 'undefined') {
-        const existingUsers = JSON.parse(localStorage.getItem('users') || JSON.stringify(FAKE_USERS));
-        const user = existingUsers.find(
-          (u: any) => u.nickname === nickname && u.password === password
-        );
-
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          toast({
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        toast({
             title: 'Login Successful',
-            description: `Welcome back, ${user.name}!`,
-          });
-          router.push('/dashboard');
-        } else {
-          toast({
+            description: `Welcome back!`,
+        });
+        router.push('/dashboard');
+    } catch (error: any) {
+        toast({
             variant: 'destructive',
             title: 'Login Failed',
-            description: 'Invalid nickname or password. Please try again.',
-          });
-          setIsLoading(false);
-        }
-      }
-    }, 1000);
+            description: error.message || 'Invalid email or password. Please try again.',
+        });
+        setIsLoading(false);
+    }
   };
+  
+  const generateEmail = (nickname: string) => `${nickname.toLowerCase().replace(/\s+/g, '')}@draft.com`;
+
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center p-4">
@@ -103,8 +81,8 @@ export default function LoginPage() {
                   type="text"
                   placeholder="Your Nickname"
                   required
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
+                  value={email.split('@')[0]}
+                  onChange={(e) => setEmail(generateEmail(e.target.value))}
                   disabled={isLoading}
                 />
               </div>
@@ -142,10 +120,6 @@ export default function LoginPage() {
                   Sign Up
                 </Link>
               </p>
-              <div className="text-xs text-muted-foreground mt-2 text-center">
-                <p>Admin: Admin / password</p>
-                <p>Player: Player1 / password</p>
-              </div>
             </CardFooter>
           </form>
         </Card>

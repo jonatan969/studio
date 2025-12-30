@@ -12,39 +12,62 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
+
 
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
+
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+  
+  const generateEmail = (nickname: string) => `${nickname.toLowerCase().replace(/\s+/g, '')}@draft.com`;
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    const email = generateEmail(nickname);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you'd send this to your backend to create a user
-      const newUser = { nickname, password, name: nickname, isAdmin: false, photo: '' };
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await updateProfile(user, { displayName: nickname });
       
-      if (typeof window !== 'undefined') {
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        users.push(newUser);
-        localStorage.setItem('users', JSON.stringify(users));
-      }
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userData = {
+        uid: user.uid,
+        email: user.email,
+        nickname: nickname,
+        photoURL: null,
+      };
+
+      setDocumentNonBlocking(userDocRef, userData, { merge: true });
 
       toast({
         title: 'Account Created!',
         description: 'You can now log in with your new credentials.',
       });
       
-      setIsLoading(false);
       router.push('/');
-    }, 1500);
+
+    } catch (error: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Signup Failed',
+        description: error.message || 'Could not create account. Please try again.',
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
