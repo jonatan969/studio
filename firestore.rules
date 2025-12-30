@@ -1,214 +1,49 @@
-/**
- * # Firestore Security Rules
- *
- * ## Core Philosophy
- * This ruleset enforces a security model for a real-time character draft application.
- * The primary goals are to protect user privacy, ensure fair play within draft rooms,
- * and provide a clear distinction between public game data and private user/room data.
- * All actions, except for browsing public rooms and game data, require user authentication.
- *
- * ## Data Structure
- * - `/users/{userId}`: Contains private user profile data. Access is strictly limited to the document owner.
- * - `/rooms/{roomId}`: Top-level collection for draft rooms. Room metadata is publicly readable, but modifications are restricted to the room's administrator.
- * - `/rooms/{roomId}/roomPlayers/{userId}`: Subcollection tracking participants within a room. A user's document here defines their team (or spectator status) and grants them access to the room's real-time state.
- * - `/rooms/{roomId}/draftSelections/{draftSelectionId}`: Subcollection logging each pick made during a draft. This creates an immutable history of the draft.
- * - `/characters/{characterId}` & `/superArts/{superArtId}`: Public, read-only collections containing global game data.
- * - `/roles_admin/{userId}`: A simple lookup collection where the existence of a document signifies that the user is a global administrator with elevated privileges.
- *
- * ## Key Security Decisions
- * - **Strict User Privacy**: Listing or reading other users' profiles is disallowed. Users have exclusive control over their own `/users/{userId}` document.
- * - **Room Administration**: Each room has a designated `adminId`. Only this user can modify room settings or remove players.
- * - **Participant-Based Access**: A user must first join a room by creating a document in the `roomPlayers` subcollection. This "membership" document is the key that grants them read access to the room's private state, such as the full player list and draft selections.
- * - **Immutable Draft History**: Once a draft selection is made, it cannot be altered or deleted, ensuring the integrity of the draft log.
- * - **Read-Only Game Data**: Core game data like characters and super arts are publicly readable but are locked from client modification to prevent cheating. Only global admins can modify this data.
- *
- * ## Denormalization for Authorization
- * To ensure fast and secure access control, authorization relies on data stored directly on the relevant documents.
- * - The `adminId` field on a `/rooms/{roomId}` document is the source of truth for who can manage that room.
- * - A user's role (e.g., 'player' or 'spectator') is determined by the `team` field within their `/rooms/{roomId}/roomPlayers/{userId}` document. This allows rules to quickly verify permissions (e.g., a spectator cannot make a draft pick) without extra database reads.
- *
- * ## Structural Segregation
- * The data model separates public and private data into different collections. Public game data (`/characters`) is at the top level for easy, open access. User-specific data (`/users`) and room-specific data (`/rooms/{roomId}/...`) are segregated to apply more granular and secure rules.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    //================================================================================
-    // Helper Functions
-    //================================================================================
-
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the foundation of the ownership model.
-     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    /**
-     * Checks for ownership and that the resource already exists.
-     * Used for safe update and delete operations.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * Checks if the user is a global admin by looking for their UID
-     * in the /roles_admin collection.
-     */
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * Checks if the user is the administrator of a specific room.
-     */
     function isRoomAdmin(roomId) {
       return get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
     }
 
-    /**
-     * Checks if a user is a participant (player or spectator) in a given room.
-     * This is the key to granting read access to room subcollections.
-     */
-    function isParticipantInRoom(roomId) {
-      return exists(/databases/$(database)/documents/rooms/$(roomId)/roomPlayers/$(request.auth.uid));
+    function isParticipant(roomId) {
+        return exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
     }
     
-    /**
-     * Checks if a user is an active player (not a spectator) in a room.
-     * This is used to authorize actions like making a draft pick.
-     */
-    function isPlayerInRoom(roomId) {
-      let playerDoc = get(/databases/$(database)/documents/rooms/$(roomId)/roomPlayers/$(request.auth.uid));
-      return playerDoc.data.team != 'spectator';
-    }
-
-    //================================================================================
-    // User Profile Rules
-    //================================================================================
-
-    /**
-     * @description Manages user profile documents.
-     * @path /users/{userId}
-     * @allow (create) An authenticated user creating their own profile document.
-     * @deny (get) A user trying to read another user's profile.
-     * @principle Restricts access to a user's own data tree.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Disallow listing all users for privacy
+      allow read: if true;
       allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
-    //================================================================================
-    // Room Rules
-    //================================================================================
-
-    /**
-     * @description Manages the lifecycle of a draft room.
-     * @path /rooms/{roomId}
-     * @allow (get) Any user, signed in or not, can view a room's details.
-     * @deny (update) A regular user trying to change the name of a room they didn't create.
-     * @principle Enforces document ownership for writes, while allowing public reads.
-     */
     match /rooms/{roomId} {
-      allow get, list: if true;
+      allow read: if true;
       allow create: if isSignedIn() && request.resource.data.adminId == request.auth.uid;
-      allow update: if resource != null && isRoomAdmin(roomId) && request.resource.data.adminId == resource.data.adminId;
-      allow delete: if resource != null && isRoomAdmin(roomId);
-
-      //--------------------------------------------------------------------------------
-      // Room Player Rules
-      //--------------------------------------------------------------------------------
-
-      /**
-       * @description Manages players and spectators within a room. The document ID must be the user's UID.
-       * @path /rooms/{roomId}/roomPlayers/{userId}
-       * @allow (create) A user joining a room by creating their own player entry.
-       * @deny (delete) A user trying to kick another player from the room (unless they are the room admin).
-       * @principle Grants access based on room participation and ownership.
-       */
-      match /roomPlayers/{userId} {
-        allow get, list: if isParticipantInRoom(roomId);
-        allow create: if isOwner(userId) && request.resource.data.uid == userId && request.resource.data.roomId == roomId;
-        allow update: if resource != null && isOwner(resource.data.uid) && request.resource.data.uid == resource.data.uid && request.resource.data.roomId == resource.data.roomId;
-        allow delete: if resource != null && (isOwner(resource.data.uid) || isRoomAdmin(roomId));
+      allow update: if isSignedIn() && isRoomAdmin(roomId);
+      allow delete: if isSignedIn() && isRoomAdmin(roomId);
+      
+      match /players/{userId} {
+        allow read: if true;
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId) || isRoomAdmin(roomId);
+        allow delete: if isOwner(userId) || isRoomAdmin(roomId);
       }
-
-      //--------------------------------------------------------------------------------
-      // Draft Selection Rules
-      //--------------------------------------------------------------------------------
-
-      /**
-       * @description Manages the draft selections made within a room.
-       * @path /rooms/{roomId}/draftSelections/{draftSelectionId}
-       * @allow (create) An active player (not a spectator) making a character pick.
-       * @deny (create) A spectator attempting to select a character.
-       * @deny (update) Any user trying to change a pick after it has been made.
-       * @principle Enforces role-based permissions and data immutability.
-       */
-      match /draftSelections/{draftSelectionId} {
-        allow get, list: if isParticipantInRoom(roomId);
-        allow create: if isPlayerInRoom(roomId) && request.resource.data.userId == request.auth.uid && request.resource.data.roomId == roomId;
-        allow update: if false; // Draft history is immutable
-        allow delete: if false; // Draft history is immutable
+      
+      match /picks/{pickId} {
+        allow read: if isParticipant(roomId);
+        allow create: if isParticipant(roomId);
+        allow update: if isParticipant(roomId);
+        allow delete: if isRoomAdmin(roomId);
       }
-    }
-
-    //================================================================================
-    // Game Data Rules (Read-Only)
-    //================================================================================
-
-    /**
-     * @description Publicly readable collection of available characters.
-     * @path /characters/{characterId}
-     * @allow (get) Any user, signed in or not, can read character data.
-     * @deny (create) A non-admin user trying to add a new character.
-     * @principle Secures global game data as publicly readable but admin-only for writes.
-     */
-    match /characters/{characterId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    /**
-     * @description Publicly readable collection of available Super Arts.
-     * @path /superArts/{superArtId}
-     * @allow (get) Any user, signed in or not, can read Super Art data.
-     * @deny (create) A non-admin user trying to add a new Super Art.
-     * @principle Secures global game data as publicly readable but admin-only for writes.
-     */
-    match /superArts/{superArtId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin();
-    }
-    
-    //================================================================================
-    // Admin Role Rules
-    //================================================================================
-    
-    /**
-     * @description Manages global administrator roles. Client-side reads are disabled.
-     * @path /roles_admin/{userId}
-     * @allow (create) An existing admin granting admin rights to another user.
-     * @deny (get) Any user attempting to read the list of admins.
-     * @principle Secures role-management data from being read or modified by non-admins.
-     */
-    match /roles_admin/{userId} {
-      allow get, list: if false;
-      allow create, update, delete: if isAdmin();
     }
   }
 }

@@ -1,4 +1,4 @@
-import { type Character } from './game-data';
+import { type Character, type SuperArt } from './game-data';
 
 export interface Room {
     id: string;
@@ -10,10 +10,10 @@ export interface Room {
     team2Logo: string;
     playersPerTeam: number;
     spectatorLimit: number;
-    status: 'waiting' | 'starting' | 'drafting' | 'super_art' | 'reveal' | 'finished';
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
     playerCount: number;
     firstPicker?: 'team1' | 'team2';
+    pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
     currentPicker?: 'team1' | 'team2';
     turn?: number;
     picksPerTurn?: number;
@@ -29,8 +29,11 @@ export interface RoomPlayer {
     isReady: boolean;
 }
 
-export interface DraftPick extends Character {
+export interface DraftPick extends Omit<Character, 'id'> {
+    id: string; // The doc ID from firestore
+    characterId: string; // The original character ID from game-data
     pickedBy: string; // uid of player
     team: 'team1' | 'team2';
     pickOrder: number;
+    superArtId?: string;
 }

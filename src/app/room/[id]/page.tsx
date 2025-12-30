@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
-import { useEffect, useReducer, useState, useCallback } from 'react';
+import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -17,7 +17,7 @@ import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { Room, RoomPlayer, DraftPick } from '@/lib/types';
-import { doc, collection, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, collection, writeBatch, deleteDoc, runTransaction } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -27,104 +27,13 @@ type DraftPhase = 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | '
 type TeamId = 'team1' | 'team2';
 
 interface DraftState {
-  phase: DraftPhase;
-  turn: number;
-  picksPerTurn: number;
-  timeLeft: number;
-  maxTime: number;
-  superArtSelections: {
-    [key: string]: SuperArt | null; // Using character ID as key
-  };
-  draftLog: string[];
-  pickOrder: { team: TeamId; picks: number }[];
+  log: string[];
 }
 
-type DraftAction =
-  | { type: 'TICK' }
-  | { type: 'START_DRAFT_TIMER' }
-  | { type: 'SET_FIRST_PICKER'; team: TeamId, roomData: Room }
-  | { type: 'START_DRAFT' }
-  | { type: 'ADVANCE_TURN', roomData: Room, draftPicks: DraftPick[] }
-  | { type: 'COMPLETE_REVEAL' }
-  | { type: 'CANCEL_DRAFT', reason: string };
-  
-
-function draftReducer(state: DraftState, action: DraftAction): DraftState {
+function draftReducer(state: DraftState, action: {type: 'LOG', message: string}): DraftState {
   switch (action.type) {
-    case 'TICK':
-      if (state.timeLeft > 0) {
-        return { ...state, timeLeft: state.timeLeft - 1 };
-      }
-      return state;
-
-    case 'START_DRAFT_TIMER':
-      return {
-        ...state,
-        phase: 'PREP',
-        timeLeft: DRAFT_START_TIMER,
-        maxTime: DRAFT_START_TIMER,
-        draftLog: [...state.draftLog, `Both teams are full! Draft begins in ${DRAFT_START_TIMER} seconds.`],
-      };
-      
-    case 'SET_FIRST_PICKER': {
-        const pickOrder = getPickOrder(action.roomData.playersPerTeam).map((p, i) => ({
-            ...p,
-            team: i % 2 === 0 ? action.team : (action.team === 'team1' ? 'team2' : 'team1'),
-        }));
-        return {
-            ...state,
-            phase: 'DRAFTING',
-            turn: 0,
-            timeLeft: DRAFT_PICK_TIME,
-            maxTime: DRAFT_PICK_TIME,
-            draftLog: [...state.draftLog, `Team ${action.roomData[action.team === 'team1' ? 'team1Name' : 'team2Name']} won the coin toss and picks first!`],
-            pickOrder,
-        };
-    }
-
-    case 'START_DRAFT':
-        return { ...state, phase: 'COIN_FLIP', draftLog: [...state.draftLog, 'Deciding which team picks first...'] };
-    
-    case 'ADVANCE_TURN': {
-        const { roomData, draftPicks } = action;
-
-        if (state.phase === 'DRAFTING') {
-            const totalPicksMade = draftPicks.length;
-            const expectedPicksForTurn = state.pickOrder.slice(0, state.turn + 1).reduce((acc, p) => acc + p.picks, 0);
-
-            if (totalPicksMade < expectedPicksForTurn) {
-                return state; 
-            }
-
-            const newTurn = state.turn + 1;
-            if (newTurn >= state.pickOrder.length) {
-                return {
-                    ...state,
-                    phase: 'SUPER_ART',
-                    turn: 0,
-                    timeLeft: SUPER_ART_PICK_TIME,
-                    maxTime: SUPER_ART_PICK_TIME,
-                    draftLog: [...state.draftLog, 'All characters picked! Now selecting Super Arts.'],
-                };
-            }
-            
-            return {
-                ...state,
-                turn: newTurn,
-                timeLeft: DRAFT_PICK_TIME,
-                draftLog: [...state.draftLog, `It's Team ${roomData[state.pickOrder[newTurn].team === 'team1' ? 'team1Name' : 'team2Name']}'s turn to pick.`],
-            };
-        }
-        
-        return state;
-    }
-
-    case 'COMPLETE_REVEAL':
-       return { ...state, phase: 'FINISHED', timeLeft: ROOM_CLOSE_TIME, maxTime: ROOM_CLOSE_TIME };
-    
-    case 'CANCEL_DRAFT':
-        return { ...state, phase: 'CANCELED', draftLog: [...state.draftLog, `Draft canceled: ${action.reason}`] };
-
+    case 'LOG':
+      return { ...state, log: [...state.log, action.message] };
     default:
       return state;
   }
@@ -146,173 +55,243 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') : null, [firestore, roomId]);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
 
-  const [state, dispatch] = useReducer(draftReducer, {
-    phase: 'PREP',
-    turn: 0,
-    picksPerTurn: 0,
-    timeLeft: 0,
-    maxTime: 0,
-    superArtSelections: {},
-    draftLog: [],
-    pickOrder: [],
-  });
-
+  const [state, dispatch] = useReducer(draftReducer, { log: [] });
   const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
   
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
-  
+
+  // Admin leaves -> close room effect
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (user?.uid === roomData?.adminId && roomRef) {
+         deleteDocumentNonBlocking(roomRef);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user, roomData, roomRef]);
+
   const handleLeaveRoom = useCallback(async () => {
-    if (!user || !firestore || !userPlayerInfo) return;
+    if (!user || !firestore || !userPlayerInfo || !roomData) return;
 
-    if (roomData?.adminId === user.uid) {
-        // Admin is leaving, delete the entire room
-        toast({ title: "Closing Room", description: "As the admin, you are closing the room for everyone." });
-        if (roomRef) await deleteDoc(roomRef); // This will cascade via backend functions if set up, otherwise manual cleanup needed
-        router.push('/dashboard');
-        return;
+    // Admin leaving, close the whole room
+    if (roomData.adminId === user.uid) {
+      toast({ title: 'Room Closed', description: 'As admin, you have closed the room.' });
+      if (roomRef) await deleteDoc(roomRef); // Admin action should be awaited.
+      router.push('/dashboard');
+      return;
     }
-
-    // Regular player or spectator leaving
+    
+    // Regular user leaving
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     await deleteDoc(playerRef);
 
-    if (userPlayerInfo.team !== 'spectator' && (roomData?.phase !== 'PREP' && roomData?.phase !== 'FINISHED')) {
-        // Player left mid-draft, cancel it
-        if(roomRef) updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
-    } else {
-        if(roomRef) updateDocumentNonBlocking(roomRef, { playerCount: (players?.length || 1) - 1 });
+    // If a player leaves mid-draft, cancel it
+    if (userPlayerInfo.team !== 'spectator' && roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED') {
+       if (roomRef) updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
+       dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} left, canceling draft.`});
     }
-    
+
     router.push('/dashboard');
-  }, [user, firestore, userPlayerInfo, roomData, roomId, router, roomRef, players?.length]);
 
-  // Admin cleanup effect
-   useEffect(() => {
-    if (user && roomData && roomData.adminId === user.uid) {
-      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-        // This is not guaranteed to work but it's a good effort
-        if(roomRef) deleteDocumentNonBlocking(roomRef);
-      };
+  }, [user, firestore, userPlayerInfo, roomData, roomId, router, roomRef]);
 
-      window.addEventListener('beforeunload', handleBeforeUnload);
-
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-      };
-    }
-  }, [user, roomData, roomRef]);
-
-  // Player joining logic
+  // Handle joining a room for the first time
   useEffect(() => {
-    if (isUserLoading || arePlayersLoading || !user || !firestore || !roomData) return;
-    
-    if (!userPlayerInfo) {
-        // User is not in the room, show join dialog
-        setJoinDialogOpen(true);
+    if (!isRoomLoading && roomData && !arePlayersLoading && user && !userPlayerInfo) {
+      const canSpectate = roomData.phase !== 'PREP';
+      setJoinDialogOpen(true);
     }
-  }, [user, isUserLoading, arePlayersLoading, userPlayerInfo, firestore, roomData]);
+  }, [isRoomLoading, arePlayersLoading, user, userPlayerInfo, roomData]);
 
   const handleJoin = (team: 'team1' | 'team2' | 'spectator') => {
     if (!user || !firestore) return;
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     const playerData: RoomPlayer = {
         uid: user.uid,
-        nickname: user.displayName || 'Player',
+        nickname: user.displayName || 'Anon',
         photoURL: user.photoURL || null,
         team: team,
         isReady: false,
     };
-    setDocumentNonBlocking(playerRef, playerData, { merge: true });
-    if (roomRef) updateDocumentNonBlocking(roomRef, { playerCount: (players?.length || 0) + 1 });
+    setDocumentNonBlocking(playerRef, playerData, {});
     setJoinDialogOpen(false);
+    toast({title: `Joined as ${team}`});
   };
 
+  // Main Game State Machine (driven by admin)
+  useEffect(() => {
+      if (user?.uid !== roomData?.adminId || !roomRef || !players) return;
 
-  // Game state machine
-   useEffect(() => {
-    if (!roomData || !players || !draftPicks || !user) return;
+      const team1Players = players.filter(p => p.team === 'team1').length;
+      const team2Players = players.filter(p => p.team === 'team2').length;
 
-    if (roomData.phase !== state.phase) {
-        switch(roomData.phase) {
-            case 'CANCELED':
-                dispatch({ type: 'CANCEL_DRAFT', reason: 'A player has left the match.' });
-                break;
-            case 'PREP':
-                const team1Full = (players.filter(p=>p.team === 'team1').length || 0) === roomData.playersPerTeam;
-                const team2Full = (players.filter(p=>p.team === 'team2').length || 0) === roomData.playersPerTeam;
+      // PREP -> COIN_FLIP
+      if (roomData.phase === 'PREP' && team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
+        updateDocumentNonBlocking(roomRef, { 
+            phase: 'COIN_FLIP', 
+            timeLeft: DRAFT_START_TIMER,
+            maxTime: DRAFT_START_TIMER,
+        });
+        dispatch({type: 'LOG', message: `Teams are full! Countdown started.`});
+      }
 
-                if (team1Full && team2Full) {
-                    dispatch({ type: 'START_DRAFT_TIMER' });
-                    if(roomData.adminId === user.uid) {
-                        updateDocumentNonBlocking(roomRef!, { phase: 'COIN_FLIP', timeLeft: DRAFT_START_TIMER, maxTime: DRAFT_START_TIMER });
+      // Timer tick down
+      const timer = setInterval(() => {
+        if(roomData.timeLeft !== undefined && roomData.timeLeft > 0) {
+            updateDocumentNonBlocking(roomRef, { timeLeft: roomData.timeLeft - 1 });
+        } else {
+             // Handle timer expiration based on phase
+            switch(roomData.phase) {
+                case 'DRAFTING':
+                    // Auto-pick logic
+                    const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
+                    const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks?.some(dp => dp.pickedBy === p.uid));
+                    const pickedCharacterIds = draftPicks?.map(p => p.id) || [];
+                    const availableCharacters = CHARACTERS.filter(c => !pickedCharacterIds.includes(c.id));
+                    
+                    if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0) {
+                        const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
+                        const randomCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
+                        const pickData: Omit<DraftPick, 'id'> = {
+                            ...randomCharacter,
+                            pickedBy: randomPlayer.uid,
+                            team: roomData.currentPicker!,
+                            pickOrder: (draftPicks?.length || 0) + 1,
+                        };
+                        const newPickRef = doc(collection(firestore!, `rooms/${roomId}/picks`));
+                        setDocumentNonBlocking(newPickRef, pickData, {});
+                        dispatch({type: 'LOG', message: `Time ran out! ${randomCharacter.name} was auto-picked for ${randomPlayer.nickname}.`});
                     }
-                }
-                break;
-            case 'COIN_FLIP':
-                 dispatch({ type: 'START_DRAFT' });
-                 break;
-            case 'DRAFTING':
-                if (roomData.firstPicker && roomData.turn !== undefined) {
-                    if (state.phase !== 'DRAFTING') {
-                        dispatch({ type: 'SET_FIRST_PICKER', team: roomData.firstPicker, roomData });
-                    } else if (state.turn !== roomData.turn) {
-                        dispatch({ type: 'ADVANCE_TURN', roomData, draftPicks });
-                    }
-                }
-                break;
+                    break;
+                case 'SUPER_ART':
+                     // Auto-select super arts
+                     // This is complex, for now we just move on
+                     updateDocumentNonBlocking(roomRef, { phase: 'REVEAL' });
+                     dispatch({type: 'LOG', message: 'Super Art selection time is up! Revealing choices...'});
+                     break;
+                case 'FINISHED':
+                     deleteDocumentNonBlocking(roomRef);
+                     router.push('/dashboard');
+                     break;
+            }
         }
-    }
-    
-    const serverTimeLeft = roomData.timeLeft || 0;
-    if(state.timeLeft !== serverTimeLeft) {
-        // TODO: This can cause jitter, a more sophisticated time sync is needed for production
-        dispatch({ type: 'TICK' }); 
-    }
+      }, 1000);
 
-  }, [roomData, players, draftPicks, user, state.phase, state.turn, roomRef, state.timeLeft]);
+      return () => clearInterval(timer);
+
+  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router]);
+
+  // Client-side turn advancement logic
+  useEffect(() => {
+    if(!firestore || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder) return;
+    
+    const currentTurnInfo = roomData.pickOrder[roomData.turn || 0];
+    const picksThisTurn = draftPicks.filter(p => p.team === currentTurnInfo.team && p.pickOrder > (roomData.turn === 0 ? 0 : roomData.pickOrder![roomData.turn! - 1].picks)).length;
+    
+    const totalPicksExpected = roomData.pickOrder.slice(0, (roomData.turn || 0) + 1).reduce((acc, turn) => acc + turn.picks, 0);
+
+    if (draftPicks.length >= totalPicksExpected) {
+         const newTurn = (roomData.turn || 0) + 1;
+         if (newTurn >= roomData.pickOrder.length) {
+              // End of draft, move to Super Art
+              if(user?.uid === roomData.adminId) {
+                updateDocumentNonBlocking(roomRef!, {
+                    phase: 'SUPER_ART',
+                    timeLeft: SUPER_ART_PICK_TIME,
+                    maxTime: SUPER_ART_PICK_TIME,
+                    currentPicker: null,
+                    turn: 0,
+                    picksPerTurn: 0,
+                });
+                dispatch({type: 'LOG', message: 'All characters picked! Time to select Super Arts.'});
+              }
+         } else {
+             // Advance to next turn
+             if(user?.uid === roomData.adminId) {
+                const nextTurnInfo = roomData.pickOrder[newTurn];
+                updateDocumentNonBlocking(roomRef!, {
+                    turn: newTurn,
+                    currentPicker: nextTurnInfo.team,
+                    picksPerTurn: nextTurnInfo.picks,
+                    timeLeft: DRAFT_PICK_TIME,
+                });
+                dispatch({type: 'LOG', message: `It's Team ${roomData[nextTurnInfo.team === 'team1' ? 'team1Name' : 'team2Name']}'s turn.`});
+             }
+         }
+    }
+  }, [draftPicks, roomData, firestore, user, roomRef]);
+
 
   const handlePickCharacter = (character: Character) => {
-    if (!user || !roomData || !players || !draftPicks || !firestore) return;
+    if (!user || !roomData || !players || !draftPicks || !firestore || !userPlayerInfo) return;
     
-    const currentPlayer = players.find(p => p.uid === user.uid);
-    if (!currentPlayer || currentPlayer.team === 'spectator') {
-        toast({ variant: 'destructive', title: 'Spectators cannot pick' });
+    if (userPlayerInfo.team === 'spectator') {
+        toast({ variant: 'destructive', title: 'Spectators cannot pick.' });
         return;
     }
-    if (roomData.currentPicker !== currentPlayer.team) {
-        toast({ variant: 'destructive', title: 'Not your team\'s turn' });
+    if (roomData.phase !== 'DRAFTING' || roomData.currentPicker !== userPlayerInfo.team) {
+        toast({ variant: 'destructive', title: "It's not your team's turn to pick." });
         return;
     }
-    if (draftPicks.some(p => p.pickedBy === user.uid)) {
-        toast({ variant: 'destructive', title: 'You have already picked' });
+    
+    const picksByMyTeamThisTurn = draftPicks.filter(p => p.team === userPlayerInfo.team).length;
+    const picksAllowedThisTurn = roomData.picksPerTurn || 0;
+    
+    if(draftPicks.some(p => p.pickedBy === user.uid)) {
+        toast({ variant: 'destructive', title: 'You have already picked a character.' });
         return;
     }
 
-    const picksRef = collection(firestore, `rooms/${roomId}/picks`);
-    const pickData: DraftPick = {
+    const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
+    const pickData: Omit<DraftPick, 'id'> = {
         ...character,
         pickedBy: user.uid,
-        team: currentPlayer.team,
+        team: userPlayerInfo.team,
         pickOrder: draftPicks.length + 1,
     };
     
-    addDocumentNonBlocking(picksRef, pickData);
+    setDocumentNonBlocking(newPickRef, pickData, {});
 
-    toast({ title: 'Character Picked!', description: `Your team picked ${character.name}.` });
+    toast({ title: 'Character Picked!', description: `You picked ${character.name}.` });
+    dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} picked ${character.name}.`});
   };
   
-  const handleSelectSuperArt = (art: SuperArt) => {
-    console.log("Super art selected", art);
-    // TODO: Implement super art selection logic
+  const handleSelectSuperArt = async (art: SuperArt) => {
+    if(!firestore || !user || !draftPicks) return;
+    const myPick = draftPicks.find(p => p.pickedBy === user.uid);
+    if (!myPick) {
+      toast({variant: 'destructive', title: 'Cannot select Super Art', description: "You haven't picked a character yet."});
+      return;
+    }
+    const pickRef = doc(firestore, `rooms/${roomId}/picks`, myPick.id);
+    await updateDocumentNonBlocking(pickRef, { superArtId: art.id });
+    toast({title: 'Super Art Locked In!'});
+    
+    // Check if all players have selected a super art
+    const allPlayersPicked = players?.filter(p => p.team !== 'spectator').length === draftPicks.filter(p => p.superArtId).length + 1;
+    if (allPlayersPicked && user.uid === roomData?.adminId) {
+        updateDocumentNonBlocking(roomRef!, { phase: 'REVEAL' });
+        dispatch({type: 'LOG', message: 'All Super Arts selected! The final reveal!'});
+    }
   }
 
   const handleCoinFlipResult = (winner: TeamId) => {
-    if(user?.uid === roomData?.adminId && roomRef) {
-        const pickOrder = getPickOrder(roomData!.playersPerTeam).map((p, i) => ({
-            ...p,
-            team: i % 2 === 0 ? winner : (winner === 'team1' ? 'team2' : 'team1'),
-        }));
-        updateDocumentNonBlocking(roomRef, { phase: 'DRAFTING', firstPicker: winner, currentPicker: pickOrder[0].team, turn: 0, picksPerTurn: pickOrder[0].picks, timeLeft: DRAFT_PICK_TIME });
+    if(user?.uid === roomData?.adminId && roomRef && roomData) {
+        const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
+        updateDocumentNonBlocking(roomRef, { 
+            phase: 'DRAFTING', 
+            firstPicker: winner, 
+            pickOrder: pickOrder,
+            turn: 0,
+            currentPicker: pickOrder[0].team,
+            picksPerTurn: pickOrder[0].picks,
+            timeLeft: DRAFT_PICK_TIME,
+            maxTime: DRAFT_PICK_TIME,
+        });
+        dispatch({type: 'LOG', message: `Team ${roomData[winner === 'team1' ? 'team1Name' : 'team2Name']} won the toss!`});
     }
   }
   
@@ -331,14 +310,14 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   const team1Players = players?.filter(p => p.team === 'team1') || [];
   const team2Players = players?.filter(p => p.team === 'team2') || [];
 
-  const team1Picks = draftPicks?.filter(p => p.team === 'team1').map(p => CHARACTERS.find(c => c.id === p.id)!) || [];
-  const team2Picks = draftPicks?.filter(p => p.team === 'team2').map(p => CHARACTERS.find(c => c.id === p.id)!) || [];
-  const bannedCharacters = draftPicks?.map(p => p.id) || [];
+  const team1Picks = draftPicks?.filter(p => p.team === 'team1') || [];
+  const team2Picks = draftPicks?.filter(p => p.team === 'team2') || [];
+  const bannedCharacterIds = draftPicks?.map(p => p.id) || [];
   
   const getPhaseText = () => {
     switch (roomData.phase) {
       case 'PREP': return `Waiting for players...`;
-      case 'COIN_FLIP': return 'Deciding First Pick';
+      case 'COIN_FLIP': return 'Draft starting...';
       case 'DRAFTING': return 'Picking Phase';
       case 'SUPER_ART': return 'Super Art Selection';
       case 'REVEAL': return 'The Reveal';
@@ -348,13 +327,22 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     }
   };
   
-  const allFinalPicks = draftPicks as (DraftPick & {superArt: SuperArt})[] || [];
+  const allFinalPicks = draftPicks?.map(pick => {
+    const superArt = SUPER_ARTS.find(sa => sa.id === pick.superArtId);
+    return { ...pick, superArt: superArt || null };
+  }) || [];
+  
+  const handleCompleteReveal = () => {
+    if (user?.uid === roomData?.adminId && roomRef) {
+        updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', timeLeft: ROOM_CLOSE_TIME, maxTime: ROOM_CLOSE_TIME });
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader />
       <main className="flex-grow container py-4 md:py-8 flex flex-col gap-4">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
             <DraftTimer
             phaseText={getPhaseText()}
             timeLeft={roomData.timeLeft || 0}
@@ -370,16 +358,16 @@ export default function RoomPage({ params }: { params: { id: string }}) {
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center">
-            {roomData.phase === 'COIN_FLIP' && (
-                <CoinFlip onComplete={handleCoinFlipResult} />
-            )}
+            {roomData.phase === 'COIN_FLIP' && roomData.timeLeft! > 0 && <p className="text-2xl font-bold">Draft starts in {roomData.timeLeft}...</p>}
+            {roomData.phase === 'COIN_FLIP' && roomData.timeLeft! <= 0 && <CoinFlip onComplete={handleCoinFlipResult} />}
+
             {roomData.phase === 'DRAFTING' && (
-                <div className="grid grid-cols-4 gap-4 p-4">
+                <div className="grid grid-cols-4 gap-2 p-2">
                     {CHARACTERS.map(char => (
                         <CharacterSquare
                             key={char.id}
                             character={char}
-                            isPicked={bannedCharacters.includes(char.id)}
+                            isPicked={bannedCharacterIds.includes(char.id)}
                             onClick={() => handlePickCharacter(char)}
                         />
                     ))}
@@ -388,17 +376,17 @@ export default function RoomPage({ params }: { params: { id: string }}) {
              {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && (
                 <SuperArtSelector onSelect={handleSelectSuperArt} isSubmitting={false}/>
             )}
-            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && allFinalPicks.length > 0 && (
+            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && (
                 <SuperArtSpectatorView allPicks={allFinalPicks} />
             )}
-             {(roomData.phase === 'PREP' || roomData.phase === 'FINISHED') && (
+             {(roomData.phase === 'PREP' || roomData.phase === 'FINISHED' || roomData.phase === 'CANCELED') && (
                  <Card className="w-full h-full flex flex-col items-center justify-center">
                     <CardHeader>
                         <CardTitle className="font-headline text-2xl flex items-center gap-2"><History/> Draft Log</CardTitle>
                     </CardHeader>
                     <CardContent className="w-full">
                         <div className="h-96 overflow-y-auto space-y-2 text-sm p-4 bg-secondary/30 rounded-md">
-                            {state.draftLog.map((log, i) => <p key={i}>{log}</p>)}
+                            {state.log.map((log, i) => <p key={i}>{log}</p>)}
                         </div>
                     </CardContent>
                  </Card>
@@ -408,12 +396,12 @@ export default function RoomPage({ params }: { params: { id: string }}) {
           <TeamDisplay teamName={roomData.team2Name} teamId="team2" players={team2Players} picks={team2Picks} isPicking={roomData.currentPicker === 'team2'} maxPlayers={roomData.playersPerTeam}/>
         </div>
       </main>
-      {state.phase === 'REVEAL' && allFinalPicks.length > 0 && (
+      {roomData.phase === 'REVEAL' && allFinalPicks.length > 0 && (
          <DramaticReveal
-          team1SuperArt={allFinalPicks.find(p => p.team === 'team1')?.superArt || SUPER_ARTS[0]}
-          team2SuperArt={allFinalPicks.find(p => p.team === 'team2')?.superArt || SUPER_ARTS[1]}
+          team1SuperArt={allFinalPicks.find(p => p.team === 'team1' && p.superArt)?.superArt || SUPER_ARTS[0]}
+          team2SuperArt={allFinalPicks.find(p => p.team === 'team2' && p.superArt)?.superArt || SUPER_ARTS[1]}
           allPicks={allFinalPicks}
-          onComplete={() => dispatch({ type: 'COMPLETE_REVEAL' })}
+          onComplete={handleCompleteReveal}
          />
       )}
        <JoinRoomDialog 

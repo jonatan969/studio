@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Room, RoomPlayer } from "@/lib/types";
+import { Users, UserCheck } from "lucide-react";
 
 interface JoinRoomDialogProps {
   isOpen: boolean;
@@ -36,33 +37,36 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl">Join Room: {roomData.name}</DialogTitle>
           <DialogDescription>
-            Choose how you want to enter the room.
+            Choose how you want to enter the room. Draft in progress: spectators only.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Button 
             onClick={() => onJoin('team1')} 
             disabled={isTeam1Full || !canJoinAsPlayer}
-            className="w-full justify-start"
+            className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team1Name} ({team1Count}/{roomData.playersPerTeam})
+            Join {roomData.team1Name} 
+            <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team1Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
             onClick={() => onJoin('team2')} 
             disabled={isTeam2Full || !canJoinAsPlayer}
-            className="w-full justify-start"
+            className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team2Name} ({team2Count}/{roomData.playersPerTeam})
+            Join {roomData.team2Name}
+            <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team2Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
             onClick={() => onJoin('spectator')} 
             disabled={areSpectatorsFull}
-            className="w-full justify-start"
+            className="w-full justify-between"
             variant="outline"
           >
-            Join as Spectator ({spectatorCount}/{roomData.spectatorLimit})
+            Join as Spectator
+            <span className="flex items-center gap-1 text-muted-foreground"><UserCheck className="w-4 h-4" />{spectatorCount}/{roomData.spectatorLimit}</span>
           </Button>
         </div>
       </DialogContent>

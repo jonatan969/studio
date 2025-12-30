@@ -4,13 +4,15 @@ import { generateDramaticReveal, GenerateDramaticRevealInput } from '@/ai/flows/
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Character, SuperArt } from '@/lib/game-data';
-import { Card } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 import { SuperArtIcon } from './super-art-icon';
+import { DraftPick } from '@/lib/types';
+import Image from 'next/image';
 
 interface DramaticRevealProps {
   team1SuperArt: SuperArt;
   team2SuperArt: SuperArt;
-  allPicks: { team: 'Orange' | 'Purple'; character: Character; superArt: SuperArt }[];
+  allPicks: (DraftPick & { superArt: SuperArt | null })[];
   onComplete: () => void;
 }
 
@@ -71,16 +73,25 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
         <div className="absolute inset-0 z-50 w-full h-full bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in-50 duration-500 overflow-y-auto">
             <h2 className="text-5xl font-headline font-bold text-accent mb-8">Final Selections</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
-                {['Orange', 'Purple'].map(teamName => (
-                    <div key={teamName}>
-                        <h3 className={`text-3xl font-headline mb-4 ${teamName === 'Orange' ? 'text-orange-400' : 'text-purple-400'}`}>Team {teamName}</h3>
+                {['team1', 'team2'].map(teamId => (
+                    <div key={teamId}>
+                        <h3 className={`text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? 'Team 1' : 'Team 2'}</h3>
                         <div className="space-y-4">
-                            {allPicks.filter(p => p.team === teamName).map(({character, superArt}, index) => (
+                            {allPicks.filter(p => p.team === teamId).map((pick, index) => (
                                 <Card key={index} className="bg-card/80 p-4 rounded-lg flex justify-between items-center">
-                                    <p className="font-bold text-lg">{character.name}</p>
+                                    <div className='flex items-center gap-4'>
+                                        <div className='relative w-12 h-12 rounded-md overflow-hidden'>
+                                            <Image src={pick.image} alt={pick.name} fill className='object-cover' />
+                                        </div>
+                                        <p className="font-bold text-lg">{pick.name}</p>
+                                    </div>
                                     <div className="flex items-center gap-2">
-                                        <p className="text-accent font-semibold">{superArt.name}</p>
-                                        <SuperArtIcon art={superArt} />
+                                        {pick.superArt && (
+                                            <>
+                                                <p className="text-accent font-semibold">{pick.superArt.name}</p>
+                                                <SuperArtIcon art={pick.superArt} />
+                                            </>
+                                        )}
                                     </div>
                                 </Card>
                             ))}
@@ -88,7 +99,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
                     </div>
                 ))}
             </div>
-            <Button onClick={onComplete} className="mt-12">Return to Lobby</Button>
+            <Button onClick={onComplete} className="mt-12">Finish</Button>
         </div>
     );
   }

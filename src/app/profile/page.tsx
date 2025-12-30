@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { useUser, useFirestore, useFirebaseApp, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useFirebaseApp, updateDocumentNonBlocking, useAuth } from '@/firebase';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const firebaseApp = useFirebaseApp();
+  const auth = useAuth();
   
   const [newPhoto, setNewPhoto] = useState<string | null>(null);
   const [newPhotoFile, setNewPhotoFile] = useState<string | null>(null);
@@ -48,11 +49,11 @@ export default function ProfilePage() {
   };
   
   const getInitials = (name: string | null) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   }
 
   const handleSave = async () => {
-    if (!user || !newPhotoFile) {
+    if (!user || !newPhotoFile || !auth.currentUser) {
         toast({ title: 'No Changes', description: 'You have not selected a new photo to upload.' });
         return;
     }
@@ -70,7 +71,9 @@ export default function ProfilePage() {
           const oldStorageRef = ref(storage, user.photoURL);
           await deleteObject(oldStorageRef);
         } catch (error: any) {
-          console.warn("Could not delete old profile photo:", error.message);
+          if(error.code !== 'storage/object-not-found') {
+             console.warn("Could not delete old profile photo:", error.message);
+          }
         }
       }
       
@@ -78,9 +81,7 @@ export default function ProfilePage() {
       const downloadURL = await getDownloadURL(newStorageRef);
 
       // Update Firebase Auth user profile
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      }
+      await updateProfile(auth.currentUser, { photoURL: downloadURL });
       
       // Update Firestore user document
       if (firestore) {
@@ -114,8 +115,6 @@ export default function ProfilePage() {
     );
   }
 
-  const auth = useUser();
-
   return (
     <div className="min-h-screen bg-background">
       <PageHeader />
@@ -134,7 +133,7 @@ export default function ProfilePage() {
               <div className="grid w-full max-w-sm items-center gap-1.5">
                 <Label htmlFor="picture">Profile Photo</Label>
                 <div className="flex gap-2">
-                    <Input id="picture" type="file" accept="image/*" className="cursor-pointer" onChange={handlePhotoUpload} />
+                    <Input id="picture" type="file" accept="image/*" className="cursor-pointer" onChange={handlePhotoUpload} disabled={isLoading}/>
                     <Button variant="outline" size="icon" className="flex-shrink-0" asChild>
                        <Label htmlFor="picture" className="cursor-pointer"><Upload/></Label>
                     </Button>
@@ -149,7 +148,7 @@ export default function ProfilePage() {
               <Label>Email</Label>
               <Input value={user.email || ''} disabled />
             </div>
-            <Button onClick={handleSave} disabled={isLoading}>
+            <Button onClick={handleSave} disabled={isLoading || !newPhotoFile}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
             </Button>
           </CardContent>

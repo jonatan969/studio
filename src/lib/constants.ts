@@ -3,24 +3,32 @@ export const SUPER_ART_PICK_TIME = 60; // 1 minute
 export const ROOM_CLOSE_TIME = 180; // 3 minutes
 export const DRAFT_START_TIMER = 10; // 10 seconds
 
-export const getPickOrder = (teamSize: number) => {
-    const order = [];
+type TeamId = 'team1' | 'team2';
+
+export const getPickOrder = (teamSize: number, firstPicker: TeamId) => {
+    const order: { team: TeamId; picks: number }[] = [];
+    const secondPicker: TeamId = firstPicker === 'team1' ? 'team2' : 'team1';
     let picksMade = 0;
     let turn = 0;
-    const teams: ('Orange' | 'Purple')[] = ['Orange', 'Purple'];
+    const totalPicks = teamSize * 2;
 
-    // First pick is always 1
-    order.push({ team: teams[turn % 2], picks: 1 });
-    picksMade += 1;
-    turn++;
+    // First pick
+    if (picksMade < totalPicks) {
+        order.push({ team: firstPicker, picks: 1 });
+        picksMade += 1;
+        turn++;
+    }
 
-    while (picksMade < teamSize * 2) {
-        const remainingPicks = teamSize * 2 - picksMade;
+    // Subsequent picks in sets of 2
+    while (picksMade < totalPicks) {
+        const currentPicker = turn % 2 === 1 ? secondPicker : firstPicker;
+        const remainingPicks = totalPicks - picksMade;
         const picksThisTurn = Math.min(2, remainingPicks);
-        order.push({ team: teams[turn % 2], picks: picksThisTurn });
+        
+        order.push({ team: currentPicker, picks: picksThisTurn });
         picksMade += picksThisTurn;
         turn++;
     }
 
-    return order as { team: 'Orange' | 'Purple'; picks: number }[];
+    return order;
 };
