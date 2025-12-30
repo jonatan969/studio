@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/page-header';
 import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
 import { useEffect, useReducer, useState, useCallback } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
-import { HexagonGrid } from '@/components/room/hexagon-grid';
+import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
 import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, ROOM_CLOSE_TIME, DRAFT_START_TIMER, getPickOrder } from '@/lib/constants';
 import { SuperArtSelector } from '@/components/room/super-art-selector';
@@ -373,11 +373,16 @@ export default function RoomPage({ params: { id: roomId } }: { params: { id: str
                 <CoinFlip onComplete={handleCoinFlipResult} />
             )}
             {roomData.phase === 'DRAFTING' && (
-                <HexagonGrid
-                    characters={CHARACTERS}
-                    bannedCharacters={bannedCharacters}
-                    onPick={handlePickCharacter}
-                />
+                <div className="grid grid-cols-4 gap-4 p-4">
+                    {CHARACTERS.map(char => (
+                        <CharacterSquare
+                            key={char.id}
+                            character={char}
+                            isPicked={bannedCharacters.includes(char.id)}
+                            onClick={() => handlePickCharacter(char)}
+                        />
+                    ))}
+                </div>
             )}
              {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && (
                 <SuperArtSelector onSelect={handleSelectSuperArt} isSubmitting={false}/>
@@ -432,3 +437,5 @@ export default function RoomPage({ params: { id: roomId } }: { params: { id: str
     </div>
   );
 }
+
+    
