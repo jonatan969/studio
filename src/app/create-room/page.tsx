@@ -17,7 +17,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { TEAM_LOGOS } from '@/lib/game-data';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
 const createRoomSchema = z.object({

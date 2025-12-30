@@ -32,9 +32,10 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
           {SUPER_ARTS.map((art) => (
             <div
               key={art.id}
-              onClick={() => setSelectedArt(art)}
+              onClick={() => !isSubmitting && setSelectedArt(art)}
               className={cn(
-                'p-6 rounded-lg border-2 cursor-pointer transition-all duration-200 relative',
+                'p-6 rounded-lg border-2 transition-all duration-200 relative',
+                isSubmitting ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                 selectedArt?.id === art.id ? 'border-accent bg-accent/10' : 'border-border hover:border-primary'
               )}
             >
@@ -49,7 +50,10 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
         <CardContent>
           <Button onClick={handleSubmit} disabled={!selectedArt || isSubmitting} className="w-full max-w-xs mx-auto font-bold text-lg py-6">
             {isSubmitting ? (
-              <Loader2 className="animate-spin" />
+              <>
+                <CheckCircle className="mr-2" />
+                Locked In
+              </>
             ) : (
              'Lock In Super Art'
             )}
