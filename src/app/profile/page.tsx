@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload } from 'lucide-react';
-import { useUser, useFirestore, useFirebaseApp, updateDocumentNonBlocking, useAuth } from '@/firebase';
-import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { Loader2 } from 'lucide-react';
+import { useUser, useFirestore, useAuth, updateDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 
@@ -20,80 +19,45 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const { user, isUserLoading, refreshUser } = useUser();
   const firestore = useFirestore();
-  const firebaseApp = useFirebaseApp();
   const auth = useAuth();
   
-  const [newPhoto, setNewPhoto] = useState<string | null>(null);
-  const [newPhotoFile, setNewPhotoFile] = useState<string | null>(null);
+  const [photoURL, setPhotoURL] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/');
     } else if (user) {
-      setNewPhoto(user.photoURL);
+      setPhotoURL(user.photoURL || '');
     }
   }, [user, isUserLoading, router]);
 
-  const handlePhotoUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setNewPhoto(result); // For immediate preview
-        setNewPhotoFile(result); // To track that a new file is staged
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
   const getInitials = (name: string | null) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   }
 
   const handleSave = async () => {
-    if (!user || !newPhotoFile || !auth.currentUser) {
-        toast({ title: 'No Changes', description: 'You have not selected a new photo to upload.' });
+    if (!user || !auth.currentUser) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update your profile.' });
+        return;
+    }
+    if (photoURL === user.photoURL) {
+        toast({ title: 'No Changes', description: 'The new photo URL is the same as the old one.' });
         return;
     }
     
     setIsLoading(true);
 
     try {
-      const storage = getStorage(firebaseApp);
-      const storagePath = `profile-photos/${user.uid}`;
-      const newStorageRef = ref(storage, storagePath);
-
-      // If user already has a photoURL, delete the old one.
-      // We assume the old photo exists at the same path.
-      if (user.photoURL) {
-        try {
-          const oldStorageRef = ref(storage, storagePath);
-          await deleteObject(oldStorageRef);
-        } catch (error: any) {
-          // It's okay if the old object wasn't found, we can ignore that error.
-          if(error.code !== 'storage/object-not-found') {
-             console.warn("Could not delete old profile photo:", error.message);
-          }
-        }
-      }
-      
-      await uploadString(newStorageRef, newPhotoFile, 'data_url');
-      const downloadURL = await getDownloadURL(newStorageRef);
-
       // Update Firebase Auth user profile
-      await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      await updateProfile(auth.currentUser, { photoURL: photoURL });
       
       // Update Firestore user document
       if (firestore) {
         const userDocRef = doc(firestore, 'users', user.uid);
-        updateDocumentNonBlocking(userDocRef, { photoURL: downloadURL });
+        updateDocumentNonBlocking(userDocRef, { photoURL: photoURL });
       }
       
-      setNewPhoto(downloadURL); // Update preview to be the final URL
-      setNewPhotoFile(null); // Clear staged file
-
       // Manually trigger a refresh of the user object to get the latest photoURL
       await refreshUser();
       
@@ -132,17 +96,19 @@ export default function ProfilePage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={newPhoto || undefined} alt={user.displayName || ''} />
+                <AvatarImage src={photoURL || undefined} alt={user.displayName || ''} />
                 <AvatarFallback className="text-3xl">{getInitials(user.displayName || '')}</AvatarFallback>
               </Avatar>
               <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="picture">Profile Photo</Label>
-                <div className="flex gap-2">
-                    <Input id="picture" type="file" accept="image/*" className="cursor-pointer" onChange={handlePhotoUpload} disabled={isLoading}/>
-                    <Button variant="outline" size="icon" className="flex-shrink-0" asChild>
-                       <Label htmlFor="picture" className="cursor-pointer"><Upload/></Label>
-                    </Button>
-                </div>
+                <Label htmlFor="picture-url">Profile Photo URL</Label>
+                <Input 
+                  id="picture-url" 
+                  type="text" 
+                  placeholder="https://example.com/image.png"
+                  value={photoURL}
+                  onChange={(e) => setPhotoURL(e.target.value)}
+                  disabled={isLoading}
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -153,7 +119,7 @@ export default function ProfilePage() {
               <Label>Email</Label>
               <Input value={user.email || ''} disabled />
             </div>
-            <Button onClick={handleSave} disabled={isLoading || !newPhotoFile}>
+            <Button onClick={handleSave} disabled={isLoading || photoURL === user.photoURL}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
             </Button>
           </CardContent>
