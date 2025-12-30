@@ -55,6 +55,7 @@ export default function ProfilePage() {
       // Update Firestore user document
       if (firestore) {
         const userDocRef = doc(firestore, 'users', user.uid);
+        // This is a non-blocking call.
         updateDocumentNonBlocking(userDocRef, { photoURL: photoURL });
       }
       
