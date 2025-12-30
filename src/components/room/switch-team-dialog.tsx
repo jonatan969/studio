@@ -36,9 +36,9 @@ export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, play
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Switch Team</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Cambiar de Equipo</DialogTitle>
           <DialogDescription>
-            You can switch teams or become a spectator while the room is waiting for players.
+            Puedes cambiar de equipo o convertirte en espectador mientras la sala espera jugadores.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -48,7 +48,7 @@ export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, play
             className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team1Name} 
+            Unirse a {roomData.team1Name} 
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team1Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
@@ -57,7 +57,7 @@ export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, play
             className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team2Name}
+            Unirse a {roomData.team2Name}
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team2Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
@@ -66,13 +66,13 @@ export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, play
             className="w-full justify-between"
             variant="outline"
           >
-            Join as Spectator
+            Unirse como Espectador
             <span className="flex items-center gap-1 text-muted-foreground"><UserCheck className="w-4 h-4" />{spectatorCount}/{roomData.spectatorLimit}</span>
           </Button>
         </div>
         <DialogFooter>
             <DialogClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
+                <Button type="button" variant="secondary">Cancelar</Button>
             </DialogClose>
         </DialogFooter>
       </DialogContent>

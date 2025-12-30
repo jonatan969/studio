@@ -13,7 +13,7 @@ interface DraftTimerProps {
 
 export function DraftTimer({ phaseText, timeLeft, maxTime, currentTeamName, currentTeamId }: DraftTimerProps) {
   const progress = maxTime > 0 ? (timeLeft / maxTime) * 100 : 0;
-  const teamText = currentTeamName ? `${currentTeamName} is picking` : 'Prepare for the draft!';
+  const teamText = currentTeamName ? `${currentTeamName} está eligiendo` : '¡Prepárate para el draft!';
   const teamColorClass = currentTeamId === 'team1' ? 'text-orange-400' : 'text-purple-400';
 
   return (

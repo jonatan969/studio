@@ -94,7 +94,7 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
                 </div>
             </div>
             <p className="font-headline text-2xl mt-4">
-                {result ? `Team ${result === 'team1' ? 'Orange' : 'Purple'} picks first!` : 'Flipping coin...'}
+                {result ? `¡El equipo ${result === 'team1' ? 'Naranja' : 'Morado'} elige primero!` : 'Lanzando la moneda...'}
             </p>
         </div>
     );

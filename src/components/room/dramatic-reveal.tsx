@@ -59,7 +59,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
         setRevealText(result.revealText);
       } catch (error) {
         console.error('Failed to generate dramatic reveal:', error);
-        setRevealText('The die is cast. The powers are chosen. Let the battle commence!');
+        setRevealText('Los dados están echados. Los poderes han sido elegidos. ¡Que comience la batalla!');
       } finally {
         setIsLoading(false);
       }
@@ -71,11 +71,11 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
   if (showAll) {
     return (
         <div className="absolute inset-0 z-50 w-full h-full bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in-50 duration-500 overflow-y-auto">
-            <h2 className="text-3xl sm:text-5xl font-headline font-bold text-accent mb-4 sm:mb-8">Final Selections</h2>
+            <h2 className="text-3xl sm:text-5xl font-headline font-bold text-accent mb-4 sm:mb-8">Selecciones Finales</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 w-full max-w-6xl">
                 {['team1', 'team2'].map(teamId => (
                     <div key={teamId}>
-                        <h3 className={`text-2xl sm:text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? allPicks.find(p => p.team === 'team1')?.teamName || 'Team 1' : allPicks.find(p => p.team === 'team2')?.teamName || 'Team 2'}</h3>
+                        <h3 className={`text-2xl sm:text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? allPicks.find(p => p.team === 'team1')?.teamName || 'Equipo 1' : allPicks.find(p => p.team === 'team2')?.teamName || 'Equipo 2'}</h3>
                         <div className="space-y-3 sm:space-y-4">
                             {allPicks.filter(p => p.team === teamId).map((pick, index) => (
                                 <Card key={index} className="bg-card/80 p-3 sm:p-4 rounded-lg flex justify-between items-center">
@@ -99,7 +99,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
                     </div>
                 ))}
             </div>
-            <Button onClick={onComplete} className="mt-8 sm:mt-12">Finish</Button>
+            <Button onClick={onComplete} className="mt-8 sm:mt-12">Finalizar</Button>
         </div>
     );
   }
@@ -107,13 +107,13 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
   return (
     <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
       {isLoading ? (
-        <p className="text-2xl text-white">Forging destinies...</p>
+        <p className="text-2xl text-white">Forjando destinos...</p>
       ) : (
         <div className="text-center animate-in fade-in-50 duration-1000">
           <TypingEffect text={revealText} onFinished={() => setIsTyping(false)} />
           {!isTyping && (
              <Button onClick={() => setShowAll(true)} className="mt-8 animate-in fade-in delay-500 duration-500">
-                Reveal All
+                Revelar Todo
             </Button>
           )}
         </div>

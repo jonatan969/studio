@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'Versus Draft',
-  description: 'A character draft system for video games.',
+  description: 'Sistema de elección de KITS',
 };
 
 export default function RootLayout({

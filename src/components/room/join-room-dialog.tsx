@@ -36,9 +36,9 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
     <Dialog open={isOpen}>
       <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Join Room: {roomData.name}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Unirse a la Sala: {roomData.name}</DialogTitle>
           <DialogDescription>
-            {canJoinAsPlayer ? "Choose a team or join as a spectator." : "Draft in progress. You can only join as a spectator."}
+            {canJoinAsPlayer ? "Elige un equipo o únete como espectador." : "El draft está en progreso. Solo puedes unirte como espectador."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -48,7 +48,7 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team1Name} 
+            Unirse a {roomData.team1Name} 
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team1Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
@@ -57,7 +57,7 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             className="w-full justify-between"
             variant="outline"
           >
-            Join {roomData.team2Name}
+            Unirse a {roomData.team2Name}
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team2Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
@@ -66,7 +66,7 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             className="w-full justify-between"
             variant="outline"
           >
-            Join as Spectator
+            Unirse como Espectador
             <span className="flex items-center gap-1 text-muted-foreground"><UserCheck className="w-4 h-4" />{spectatorCount}/{roomData.spectatorLimit}</span>
           </Button>
         </div>

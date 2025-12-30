@@ -54,8 +54,8 @@ export default function SignupPage() {
       setDocumentNonBlocking(userDocRef, userData, { merge: true });
 
       toast({
-        title: 'Account Created!',
-        description: 'You can now log in with your new credentials.',
+        title: 'Cuenta Creada!',
+        description: 'Ahora puedes conectarte con tus nueva cuenta.',
       });
       
       router.push('/');
@@ -63,8 +63,8 @@ export default function SignupPage() {
     } catch (error: any) {
        toast({
         variant: 'destructive',
-        title: 'Signup Failed',
-        description: error.message || 'Could not create account. Please try again.',
+        title: 'Registro Fallido',
+        description: error.message || 'No se pudo crear la cuenta. Intentelo otra vez.',
       });
       setIsLoading(false);
     }
@@ -88,17 +88,17 @@ export default function SignupPage() {
         <Card className="w-full max-w-sm">
           <CardHeader className="items-center">
             <VersusLogo className="h-12 w-12 mb-2 text-primary" />
-            <CardTitle className="font-headline text-3xl">Create Account</CardTitle>
-            <CardDescription>Join Versus Draft today.</CardDescription>
+            <CardTitle className="font-headline text-3xl">Crear Cuenta</CardTitle>
+            <CardDescription>Crea una cuente e ingresa a KBA Draft ahora.</CardDescription>
           </CardHeader>
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
                <div className="space-y-2 text-left">
-                <Label htmlFor="nickname">Nickname</Label>
+                <Label htmlFor="nickname">Usuario</Label>
                 <Input
                   id="nickname"
                   type="text"
-                  placeholder="Your Nickname"
+                  placeholder="Nickname"
                   required
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
@@ -106,7 +106,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2 text-left">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Contraseña</Label>
                 <Input
                   id="password"
                   type="password"
@@ -120,12 +120,12 @@ export default function SignupPage() {
             </CardContent>
             <CardFooter className="flex-col gap-4">
               <Button type="submit" className="w-full font-bold" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Sign Up'}
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Registrarse'}
               </Button>
                <p className="text-xs text-muted-foreground">
-                Already have an account?{' '}
+                Ya tienes una cuenta?{' '}
                 <Link href="/" className="text-accent hover:underline">
-                  Log In
+                  Ingresa
                 </Link>
               </p>
             </CardFooter>

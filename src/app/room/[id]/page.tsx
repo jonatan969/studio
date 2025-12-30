@@ -86,7 +86,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
 
     // Admin leaving, close the whole room
     if (roomData.adminId === user.uid) {
-      toast({ title: 'Room Closed', description: 'As admin, you have closed the room.' });
+      toast({ title: 'Sala Cerrada', description: 'Como administrador, has cerrado la sala.' });
       if (roomRef) await deleteDoc(roomRef); // Admin action should be awaited.
       router.push('/dashboard');
       return;
@@ -99,7 +99,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     // If a player leaves mid-draft, cancel it
     if (userPlayerInfo.team !== 'spectator' && roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED') {
        if (roomRef) updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
-       dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} left, canceling draft.`});
+       dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} se ha ido, cancelando el draft.`});
     }
 
     router.push('/dashboard');
@@ -118,14 +118,14 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     const playerData: RoomPlayer = {
         uid: user.uid,
-        nickname: user.displayName || 'Anon',
+        nickname: user.displayName || 'Anón.',
         photoURL: user.photoURL || null,
         team: team,
         isReady: false,
     };
     setDocumentNonBlocking(playerRef, playerData, {});
     setJoinDialogOpen(false);
-    toast({title: `Joined as ${team}`});
+    toast({title: `Te uniste como ${team}`});
   };
 
   const handleSwitchTeam = (team: 'team1' | 'team2' | 'spectator') => {
@@ -133,12 +133,12 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     updateDocumentNonBlocking(playerRef, { team });
     setSwitchTeamDialogOpen(false);
-    toast({title: `Switched to ${team}`});
+    toast({title: `Te cambiaste a ${team}`});
   };
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      if (user?.uid !== roomData?.adminId || !roomRef || !players) return;
+      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
@@ -152,12 +152,12 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                 timeLeft: DRAFT_START_TIMER,
                 maxTime: DRAFT_START_TIMER,
             });
-            dispatch({type: 'LOG', message: `Teams are full! Countdown started.`});
+            dispatch({type: 'LOG', message: `¡Los equipos están completos! La cuenta atrás ha comenzado.`});
         }
       } else if (roomData.phase === 'COIN_FLIP' && (team1Players !== roomData.playersPerTeam || team2Players !== roomData.playersPerTeam)) {
           // A player left, go back to PREP
           updateDocumentNonBlocking(roomRef, { phase: 'PREP', timeLeft: 0, maxTime: 0 });
-          dispatch({type: 'LOG', message: `A player left. Waiting for teams to be full again.`});
+          dispatch({type: 'LOG', message: `Un jugador se ha ido. Esperando a que los equipos se llenen de nuevo.`});
       }
 
       // Timer tick down
@@ -190,14 +190,14 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                         };
                         const newPickRef = doc(collection(firestore!, `rooms/${roomId}/picks`));
                         setDocumentNonBlocking(newPickRef, pickData, {});
-                        dispatch({type: 'LOG', message: `Time ran out! ${randomCharacter.name} was auto-picked for ${randomPlayer.nickname}.`});
+                        dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${randomPlayer.nickname}.`});
                     }
                     break;
                 case 'SUPER_ART':
                      // Auto-select super arts
                      // This is complex, for now we just move on
                      updateDocumentNonBlocking(roomRef, { phase: 'REVEAL' });
-                     dispatch({type: 'LOG', message: 'Super Art selection time is up! Revealing choices...'});
+                     dispatch({type: 'LOG', message: '¡El tiempo de selección de Super Art ha terminado! Revelando elecciones...'});
                      break;
                 case 'FINISHED':
                      deleteDocumentNonBlocking(roomRef);
@@ -213,9 +213,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
 
   // Client-side turn advancement logic
   useEffect(() => {
-    if(!firestore || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder) return;
-    
-    if (user?.uid !== roomData?.adminId) return;
+    if(!firestore || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData?.adminId) return;
 
     const totalPicksMade = draftPicks.length;
     
@@ -224,7 +222,9 @@ export default function RoomPage({ params }: { params: { id: string }}) {
       ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0)
       : 0;
 
-    const picksExpectedThisTurn = roomData.pickOrder[roomData.turn as number].picks;
+    const picksExpectedThisTurn = roomData.pickOrder[roomData.turn as number]?.picks;
+    if (picksExpectedThisTurn === undefined) return;
+
     const picksMadeThisTurn = totalPicksMade - picksExpectedBeforeThisTurn;
 
     if (picksMadeThisTurn >= picksExpectedThisTurn) {
@@ -240,7 +240,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                   turn: null,
                   picksPerTurn: null,
               });
-              dispatch({type: 'LOG', message: 'All characters picked! Time to select Super Arts.'});
+              dispatch({type: 'LOG', message: '¡Todos los personajes seleccionados! Hora de elegir los Super Arts.'});
          } else {
              // Advance to next turn
              const nextTurnInfo = roomData.pickOrder[newTurn];
@@ -251,40 +251,40 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                  timeLeft: DRAFT_PICK_TIME,
                  maxTime: DRAFT_PICK_TIME,
              });
-             const nextTeamName = roomData[nextTurnInfo.team === 'team1' ? 'team1Name' : 'team2Name'];
-             dispatch({type: 'LOG', message: `It's ${nextTeamName}'s turn to pick.`});
+             const nextTeamName = nextTurnInfo.team === 'team1' ? roomData.team1Name : roomData.team2Name;
+             dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
          }
     }
   }, [draftPicks, roomData, firestore, user, roomRef]);
 
 
   const handlePickCharacter = (character: Character) => {
-    if (!user || !roomData || !players || !draftPicks || !firestore || !userPlayerInfo) return;
+    if (!user || !roomData || !players || !draftPicks || !firestore || !userPlayerInfo || !roomData.pickOrder) return;
     
     if (userPlayerInfo.team === 'spectator') {
-        toast({ variant: 'destructive', title: 'Spectators cannot pick.' });
+        toast({ variant: 'destructive', title: 'Los espectadores no pueden elegir.' });
         return;
     }
     if (roomData.phase !== 'DRAFTING' || roomData.currentPicker !== userPlayerInfo.team) {
-        toast({ variant: 'destructive', title: "It's not your team's turn to pick." });
+        toast({ variant: 'destructive', title: "No es el turno de tu equipo para elegir." });
         return;
     }
     
     // Check if user has already picked in *any* turn
     if(draftPicks.some(p => p.pickedBy === user.uid)) {
-        toast({ variant: 'destructive', title: 'You have already picked a character.' });
+        toast({ variant: 'destructive', title: 'Ya has elegido un personaje.' });
         return;
     }
     
     const totalPicksMade = draftPicks.length;
     const picksExpectedBeforeThisTurn = (roomData.turn || 0) > 0
-      ? roomData.pickOrder!.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0)
+      ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0)
       : 0;
 
     const picksMadeThisTurn = totalPicksMade - picksExpectedBeforeThisTurn;
 
     if (picksMadeThisTurn >= roomData.picksPerTurn!) {
-        toast({ variant: 'destructive', title: "Your team has already picked for this turn." });
+        toast({ variant: 'destructive', title: "Tu equipo ya ha elegido para este turno." });
         return;
     }
 
@@ -300,23 +300,23 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     
     setDocumentNonBlocking(newPickRef, pickData, {});
 
-    toast({ title: 'Character Picked!', description: `You picked ${character.name}.` });
-    dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} picked ${character.name}.`});
+    toast({ title: '¡Personaje Elegido!', description: `Elegiste a ${character.name}.` });
+    dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} eligió a ${character.name}.`});
   };
   
   const handleSelectSuperArt = async (art: SuperArt) => {
-    if(!firestore || !user || !draftPicks) return;
+    if(!firestore || !user || !draftPicks || !roomData) return;
     const myPick = draftPicks.find(p => p.pickedBy === user.uid);
     if (!myPick || !myPick.id) {
-      toast({variant: 'destructive', title: 'Cannot select Super Art', description: "You haven't picked a character yet or your pick is not saved."});
+      toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje o tu elección no se ha guardado."});
       return;
     }
     const pickRef = doc(firestore, `rooms/${roomId}/picks`, myPick.id);
     await updateDocumentNonBlocking(pickRef, { superArtId: art.id });
-    toast({title: 'Super Art Locked In!'});
+    toast({title: '¡Super Art Confirmado!'});
     
     // Admin checks if all players have selected a super art
-    if (user.uid === roomData?.adminId) {
+    if (user.uid === roomData.adminId) {
         const playersWhoPicked = draftPicks.map(p => p.pickedBy);
         const allPlayerPicksHaveSuperArt = draftPicks
             .filter(p => playersWhoPicked.includes(p.pickedBy))
@@ -328,7 +328,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
 
         if (allPlayerPicksHaveSuperArt || mySelectionMakesItComplete) {
             updateDocumentNonBlocking(roomRef!, { phase: 'REVEAL' });
-            dispatch({type: 'LOG', message: 'All Super Arts selected! The final reveal!'});
+            dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
         }
     }
   }
@@ -346,8 +346,8 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             timeLeft: DRAFT_PICK_TIME,
             maxTime: DRAFT_PICK_TIME,
         });
-        const winnerTeamName = roomData[winner === 'team1' ? 'team1Name' : 'team2Name'];
-        dispatch({type: 'LOG', message: `${winnerTeamName} won the toss and will pick first!`});
+        const winnerTeamName = winner === 'team1' ? roomData.team1Name : roomData.team2Name;
+        dispatch({type: 'LOG', message: `¡${winnerTeamName} ganó el sorteo y elegirá primero!`});
     }
   }
   
@@ -357,8 +357,8 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   if (!roomData) {
       return (
         <div className="flex h-screen items-center justify-center flex-col gap-4">
-            <p className='text-2xl font-headline'>Room not found or has been closed.</p>
-            <Button onClick={() => router.push('/dashboard')}>Return to Lobby</Button>
+            <p className='text-2xl font-headline'>Sala no encontrada o ha sido cerrada.</p>
+            <Button onClick={() => router.push('/dashboard')}>Volver al Lobby</Button>
         </div>
       );
   }
@@ -373,14 +373,14 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   
   const getPhaseText = () => {
     switch (roomData.phase) {
-      case 'PREP': return `Waiting for players...`;
-      case 'COIN_FLIP': return `Draft starting in ${roomData.timeLeft}s...`;
-      case 'DRAFTING': return 'Picking Phase';
-      case 'SUPER_ART': return 'Super Art Selection';
-      case 'REVEAL': return 'The Reveal';
-      case 'FINISHED': return 'Room Closing In';
-      case 'CANCELED': return 'Draft Canceled';
-      default: return 'Draft in Progress';
+      case 'PREP': return `Esperando jugadores...`;
+      case 'COIN_FLIP': return `El draft comienza en ${roomData.timeLeft}s...`;
+      case 'DRAFTING': return 'Fase de Elección';
+      case 'SUPER_ART': return 'Selección de Super Art';
+      case 'REVEAL': return 'La Revelación';
+      case 'FINISHED': return 'La sala se cierra en';
+      case 'CANCELED': return 'Draft Cancelado';
+      default: return 'Draft en progreso';
     }
   };
   
@@ -410,17 +410,17 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             phaseText={getPhaseText()}
             timeLeft={roomData.timeLeft || 0}
             maxTime={roomData.maxTime || 1}
-            currentTeamName={roomData.currentPicker ? roomData[roomData.currentPicker === 'team1' ? 'team1Name': 'team2Name'] : null}
+            currentTeamName={roomData.currentPicker ? (roomData.currentPicker === 'team1' ? roomData.team1Name : roomData.team2Name) : null}
             currentTeamId={roomData.currentPicker || null}
             />
              <div className="flex items-center gap-2 self-end sm:self-center">
                 {userPlayerInfo && roomData.phase === 'PREP' && (
                     <Button variant="outline" size="sm" onClick={() => setSwitchTeamDialogOpen(true)}>
-                        <Swords className="mr-2 h-4 w-4" /> Switch Team
+                        <Swords className="mr-2 h-4 w-4" /> Cambiar Equipo
                     </Button>
                 )}
                 <Button variant="destructive" size="sm" onClick={handleLeaveRoom}>
-                    <LogOut className="mr-2" /> Leave
+                    <LogOut className="mr-2" /> Salir
                 </Button>
             </div>
         </div>
@@ -428,7 +428,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center">
-            {roomData.phase === 'COIN_FLIP' && roomData.timeLeft! <= 0 && <CoinFlip onComplete={handleCoinFlipResult} />}
+            {roomData.phase === 'COIN_FLIP' && (roomData.timeLeft ?? 0) <= 0 && <CoinFlip onComplete={handleCoinFlipResult} />}
 
             {roomData.phase === 'DRAFTING' && (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 sm:gap-2 p-2 w-full">
@@ -446,15 +446,15 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                 <SuperArtSelector onSelect={handleSelectSuperArt} isSubmitting={!!(draftPicks?.find(p => p.pickedBy === user?.uid)?.superArtId)} />
             )}
             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && (
-                <SuperArtSpectatorView allPicks={allFinalPicks} />
+                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} />
             )}
              {roomData.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                     <CardHeader>
-                        <CardTitle className="font-headline text-2xl">Waiting Room</CardTitle>
+                        <CardTitle className="font-headline text-2xl">Sala de Espera</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">Waiting for teams to fill up before the draft begins.</p>
+                        <p className="text-muted-foreground">Esperando a que los equipos se llenen para comenzar el draft.</p>
                         <Loader2 className="animate-spin mx-auto mt-4" />
                     </CardContent>
                  </Card>
@@ -466,7 +466,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
                 <CardHeader>
-                    <CardTitle className="font-headline text-xl flex items-center gap-2"><Users /> Spectators ({spectators.length}/{roomData.spectatorLimit})</CardTitle>
+                    <CardTitle className="font-headline text-xl flex items-center gap-2"><Users /> Espectadores ({spectators.length}/{roomData.spectatorLimit})</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-4">
                     {spectators.length > 0 ? spectators.map(spec => (
@@ -477,17 +477,17 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                             </Avatar>
                             <span className="truncate hidden sm:inline">{spec.nickname}</span>
                         </div>
-                    )) : <p className="text-sm text-muted-foreground">No spectators yet.</p>}
+                    )) : <p className="text-sm text-muted-foreground">Aún no hay espectadores.</p>}
                 </CardContent>
             </Card>
              <Card>
                 <CardHeader>
-                    <CardTitle className="font-headline text-xl flex items-center gap-2"><History /> Draft Log</CardTitle>
+                    <CardTitle className="font-headline text-xl flex items-center gap-2"><History /> Registro del Draft</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-24 w-full">
                         <div className="space-y-2 text-sm pr-4">
-                            {state.log.length > 0 ? state.log.map((log, i) => <p key={i}>{log}</p>) : <p className="text-sm text-muted-foreground">Draft has not started.</p>}
+                            {state.log.length > 0 ? state.log.map((log, i) => <p key={i}>{log}</p>) : <p className="text-sm text-muted-foreground">El draft no ha comenzado.</p>}
                         </div>
                     </ScrollArea>
                 </CardContent>
@@ -518,26 +518,26 @@ export default function RoomPage({ params }: { params: { id: string }}) {
        <AlertDialog open={roomData.phase === 'CANCELED'}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Canceled</AlertDialogTitle>
+                    <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Cancelado</AlertDialogTitle>
                     <AlertDialogDescription>
-                        The draft has been canceled because a player left the room. You will be returned to the lobby.
+                        El draft ha sido cancelado porque un jugador abandonó la sala. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Return to Lobby</AlertDialogAction>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Volver al Lobby</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
        <AlertDialog open={roomData.phase === 'FINISHED'}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">Draft Finished!</AlertDialogTitle>
+                    <AlertDialogTitle className="flex items-center gap-2">¡Draft Finalizado!</AlertDialogTitle>
                     <AlertDialogDescription>
-                        The draft is complete. This room will close automatically in {roomData.timeLeft ? `${Math.floor(roomData.timeLeft / 60)}m ${roomData.timeLeft % 60}s` : '...'}
+                        El draft está completo. Esta sala se cerrará automáticamente en {roomData.timeLeft ? `${Math.floor(roomData.timeLeft / 60)}m ${roomData.timeLeft % 60}s` : '...'}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Return to Lobby</AlertDialogAction>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Volver al Lobby</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>

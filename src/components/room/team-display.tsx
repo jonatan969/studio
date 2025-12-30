@@ -59,7 +59,7 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
                   <div className="flex-grow overflow-hidden">
                     <p className="font-bold font-headline truncate">{pick ? pick.name : player.nickname}</p>
                     {pick && <p className="text-sm text-muted-foreground truncate">{player.nickname}</p>}
-                    {!pick && <p className="text-sm text-muted-foreground">Waiting to pick...</p>}
+                    {!pick && <p className="text-sm text-muted-foreground">Esperando para elegir...</p>}
                   </div>
                 </>
               ) : (
@@ -67,7 +67,7 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
                   <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-muted/30">
                      <User className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/50" />
                   </div>
-                  <p className="text-muted-foreground text-sm sm:text-base">Empty Slot</p>
+                  <p className="text-muted-foreground text-sm sm:text-base">Espacio Vacío</p>
                 </>
               )}
             </div>

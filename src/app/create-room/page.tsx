@@ -18,13 +18,13 @@ import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
 const createRoomSchema = z.object({
-  roomName: z.string().min(3, 'Room name must be at least 3 characters'),
-  team1Name: z.string().min(1, 'Team name is required'),
-  team2Name: z.string().min(1, 'Team name is required'),
+  roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),
+  team1Name: z.string().min(1, 'El nombre del equipo es obligatorio'),
+  team2Name: z.string().min(1, 'El nombre del equipo es obligatorio'),
   playersPerTeam: z.number().min(1).max(10),
   spectatorLimit: z.number().min(0).max(10),
-  team1Logo: z.string().url('Please enter a valid URL for Team 1 logo').or(z.literal('')),
-  team2Logo: z.string().url('Please enter a valid URL for Team 2 logo').or(z.literal('')),
+  team1Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 1').or(z.literal('')),
+  team2Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 2').or(z.literal('')),
   joinPreference: z.enum(['team1', 'team2', 'spectator']),
 });
 
@@ -46,9 +46,9 @@ export default function CreateRoomPage() {
   } = useForm<CreateRoomForm>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
-      roomName: 'My Awesome Room',
-      team1Name: 'Team Alpha',
-      team2Name: 'Team Bravo',
+      roomName: 'Mi Sala Increíble',
+      team1Name: 'Equipo Alfa',
+      team2Name: 'Equipo Bravo',
       playersPerTeam: 6,
       spectatorLimit: 4,
       team1Logo: '',
@@ -64,7 +64,7 @@ export default function CreateRoomPage() {
 
   const onSubmit = async (data: CreateRoomForm) => {
     if (!user || !firestore) {
-        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a room.' });
+        toast({ variant: 'destructive', title: 'No Autenticado', description: 'Debes iniciar sesión para crear una sala.' });
         return;
     }
     setIsLoading(true);
@@ -102,13 +102,13 @@ export default function CreateRoomPage() {
         await setDocumentNonBlocking(playerRef, playerData, {});
 
         toast({
-          title: 'Room Created!',
-          description: `The room "${data.roomName}" has been successfully created.`,
+          title: '¡Sala Creada!',
+          description: `La sala "${data.roomName}" ha sido creada exitosamente.`,
         });
 
         router.push(`/room/${newRoomId}`);
     } catch(error: any) {
-        toast({ variant: 'destructive', title: 'Error Creating Room', description: error.message });
+        toast({ variant: 'destructive', title: 'Error al Crear la Sala', description: error.message });
         setIsLoading(false);
     }
   };
@@ -121,13 +121,13 @@ export default function CreateRoomPage() {
       <main className="flex-1 container py-4 sm:py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl sm:text-3xl">Create a New Draft Room</CardTitle>
-            <CardDescription>Customize your draft settings and invite others to join.</CardDescription>
+            <CardTitle className="font-headline text-2xl sm:text-3xl">Crear Nueva Sala de Draft</CardTitle>
+            <CardDescription>Personaliza la configuración de tu draft e invita a otros a unirse.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
               <div className="space-y-2">
-                <Label htmlFor="roomName">Room Name</Label>
+                <Label htmlFor="roomName">Nombre de la Sala</Label>
                 <Input id="roomName" {...register('roomName')} />
                 {errors.roomName && <p className="text-destructive text-sm">{errors.roomName.message}</p>}
               </div>
@@ -135,37 +135,37 @@ export default function CreateRoomPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Team 1 Settings */}
                 <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-headline text-xl text-orange-400">Team 1</h3>
+                  <h3 className="font-headline text-xl text-orange-400">Equipo 1</h3>
                   <div className="space-y-2">
-                    <Label htmlFor="team1Name">Team Name</Label>
+                    <Label htmlFor="team1Name">Nombre del Equipo</Label>
                     <Input id="team1Name" {...register('team1Name')} />
                     {errors.team1Name && <p className="text-destructive text-sm">{errors.team1Name.message}</p>}
                   </div>
                   <div className="space-y-2">
-                     <Label htmlFor="team1Logo">Team 1 Logo URL</Label>
-                     <Input id="team1Logo" {...register('team1Logo')} placeholder="https://example.com/logo1.png" />
+                     <Label htmlFor="team1Logo">URL del Logo del Equipo 1</Label>
+                     <Input id="team1Logo" {...register('team1Logo')} placeholder="https://ejemplo.com/logo1.png" />
                      {errors.team1Logo && <p className="text-destructive text-sm">{errors.team1Logo.message}</p>}
                   </div>
                 </div>
 
                 {/* Team 2 Settings */}
                 <div className="space-y-4 p-4 border rounded-lg">
-                  <h3 className="font-headline text-xl text-purple-400">Team 2</h3>
+                  <h3 className="font-headline text-xl text-purple-400">Equipo 2</h3>
                   <div className="space-y-2">
-                    <Label htmlFor="team2Name">Team Name</Label>
+                    <Label htmlFor="team2Name">Nombre del Equipo</Label>
                     <Input id="team2Name" {...register('team2Name')} />
                      {errors.team2Name && <p className="text-destructive text-sm">{errors.team2Name.message}</p>}
                   </div>
                    <div className="space-y-2">
-                     <Label htmlFor="team2Logo">Team 2 Logo URL</Label>
-                     <Input id="team2Logo" {...register('team2Logo')} placeholder="https://example.com/logo2.png" />
+                     <Label htmlFor="team2Logo">URL del Logo del Equipo 2</Label>
+                     <Input id="team2Logo" {...register('team2Logo')} placeholder="https://ejemplo.com/logo2.png" />
                      {errors.team2Logo && <p className="text-destructive text-sm">{errors.team2Logo.message}</p>}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <Label>Players per Team: {playersPerTeam}</Label>
+                <Label>Jugadores por Equipo: {playersPerTeam}</Label>
                 <Controller
                   name="playersPerTeam"
                   control={control}
@@ -182,7 +182,7 @@ export default function CreateRoomPage() {
               </div>
 
               <div className="space-y-4">
-                <Label>Spectator Limit: {spectatorLimit}</Label>
+                <Label>Límite de Espectadores: {spectatorLimit}</Label>
                 <Controller
                   name="spectatorLimit"
                   control={control}
@@ -199,7 +199,7 @@ export default function CreateRoomPage() {
               </div>
               
               <div className="space-y-4">
-                <Label>How do you want to join?</Label>
+                <Label>¿Cómo quieres unirte?</Label>
                  <Controller
                   name="joinPreference"
                   control={control}
@@ -211,15 +211,15 @@ export default function CreateRoomPage() {
                     >
                         <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="team1" id="team1" />
-                            Join {team1Name || 'Team 1'}
+                            Unirse a {team1Name || 'Equipo 1'}
                         </Label>
                         <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="team2" id="team2" />
-                            Join {team2Name || 'Team 2'}
+                            Unirse a {team2Name || 'Equipo 2'}
                         </Label>
                          <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="spectator" id="spectator" />
-                            Join as Spectator
+                            Unirse como Espectador
                         </Label>
                     </RadioGroup>
                   )}
@@ -228,7 +228,7 @@ export default function CreateRoomPage() {
 
 
               <Button type="submit" className="w-full font-bold" disabled={isLoading || isUserLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Create Room'}
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Crear Sala'}
               </Button>
             </form>
           </CardContent>

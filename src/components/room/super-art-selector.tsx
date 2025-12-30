@@ -25,8 +25,8 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
     <div className="w-full h-full flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl text-center animate-in fade-in-50 zoom-in-95 duration-500">
         <CardHeader>
-          <CardTitle className="font-headline text-3xl md:text-4xl">Select Your Super Art</CardTitle>
-          <CardDescription>This choice is hidden until the reveal. Choose wisely.</CardDescription>
+          <CardTitle className="font-headline text-3xl md:text-4xl">Selecciona tu Super Art</CardTitle>
+          <CardDescription>Esta elección estará oculta hasta la revelación. Elige sabiamente.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-4 md:gap-6">
           {SUPER_ARTS.map((art) => (
@@ -52,10 +52,10 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
             {isSubmitting ? (
               <>
                 <CheckCircle className="mr-2" />
-                Locked In
+                Confirmado
               </>
             ) : (
-             'Lock In Super Art'
+             'Confirmar Super Art'
             )}
           </Button>
         </CardContent>

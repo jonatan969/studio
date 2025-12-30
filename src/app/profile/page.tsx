@@ -36,11 +36,11 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (!user || !auth.currentUser) {
-        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to update your profile.' });
+        toast({ variant: 'destructive', title: 'No Autenticado', description: 'Debes iniciar sesión para actualizar tu perfil.' });
         return;
     }
     if (photoURL === user.photoURL) {
-        toast({ title: 'No Changes', description: 'The new photo URL is the same as the old one.' });
+        toast({ title: 'Sin Cambios', description: 'La nueva URL de la foto es la misma que la anterior.' });
         return;
     }
     
@@ -54,14 +54,14 @@ export default function ProfilePage() {
       await refreshUser();
       
       toast({
-        title: 'Profile Updated',
-        description: 'Your profile photo has been saved.',
+        title: 'Perfil Actualizado',
+        description: 'Tu foto de perfil ha sido guardada.',
       });
     } catch(error: any) {
         toast({
             variant: 'destructive',
-            title: 'Update Failed',
-            description: error.message || 'Could not update your profile photo.',
+            title: 'Actualización Fallida',
+            description: error.message || 'No se pudo actualizar tu foto de perfil.',
         });
     } finally {
         setIsLoading(false);
@@ -82,8 +82,8 @@ export default function ProfilePage() {
       <main className="flex-1 container py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle className="font-headline text-3xl">Your Profile</CardTitle>
-            <CardDescription>View and edit your profile information.</CardDescription>
+            <CardTitle className="font-headline text-3xl">Tu Perfil</CardTitle>
+            <CardDescription>Ve y edita la información de tu perfil.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-6">
@@ -92,11 +92,11 @@ export default function ProfilePage() {
                 <AvatarFallback className="text-3xl">{getInitials(user.displayName || '')}</AvatarFallback>
               </Avatar>
               <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="picture-url">Profile Photo URL</Label>
+                <Label htmlFor="picture-url">URL de Foto de Perfil</Label>
                 <Input 
                   id="picture-url" 
                   type="text" 
-                  placeholder="https://example.com/image.png"
+                  placeholder="https://ejemplo.com/imagen.png"
                   value={photoURL}
                   onChange={(e) => setPhotoURL(e.target.value)}
                   disabled={isLoading}
@@ -104,7 +104,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Nickname</Label>
+              <Label>Apodo</Label>
               <Input value={user.displayName || ''} disabled />
             </div>
             <div className="space-y-2">
@@ -112,7 +112,7 @@ export default function ProfilePage() {
               <Input value={user.email || ''} disabled />
             </div>
             <Button onClick={handleSave} disabled={isLoading || photoURL === user.photoURL}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Save Changes'}
+              {isLoading ? <Loader2 className="animate-spin" /> : 'Guardar Cambios'}
             </Button>
           </CardContent>
         </Card>

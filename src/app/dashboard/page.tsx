@@ -62,7 +62,7 @@ export default function DashboardPage() {
           <h1 className="font-headline text-4xl font-bold">Lobby</h1>
           <Button onClick={handleCreateRoom} className="font-bold">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Create Room
+            Crear Sala
           </Button>
         </div>
 
@@ -76,8 +76,8 @@ export default function DashboardPage() {
 
         {!isLoadingRooms && (!rooms || rooms.length === 0) && (
             <div className="text-center py-16">
-                <h2 className="text-2xl font-semibold">No rooms available</h2>
-                <p className="text-muted-foreground mt-2">Why not create one?</p>
+                <h2 className="text-2xl font-semibold">No hay salas disponibles</h2>
+                <p className="text-muted-foreground mt-2">¿Por qué no creas una?</p>
             </div>
         )}
 
@@ -114,7 +114,7 @@ export default function DashboardPage() {
                 </CardContent>
                 <CardFooter>
                    <Link href={`/room/${room.id}`} className="w-full">
-                     <Button className="w-full font-bold" variant="secondary">Join Room</Button>
+                     <Button className="w-full font-bold" variant="secondary">Unirse a la Sala</Button>
                    </Link>
                 </CardFooter>
               </Card>

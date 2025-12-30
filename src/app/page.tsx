@@ -34,15 +34,15 @@ export default function LoginPage() {
     try {
         await signInWithEmailAndPassword(auth, email, password);
         toast({
-            title: 'Login Successful',
-            description: `Welcome back!`,
+            title: 'Conexion Exitosa',
+            description: `Bienvenido denuevo!`,
         });
         router.push('/dashboard');
     } catch (error: any) {
         toast({
             variant: 'destructive',
-            title: 'Login Failed',
-            description: error.message || 'Invalid email or password. Please try again.',
+            title: 'Conexion Fallida',
+            description: error.message || 'Usuario o Contraseña incorrectos. Por favor intentalo denuevo.',
         });
         setIsLoading(false);
     }
@@ -69,17 +69,17 @@ export default function LoginPage() {
         <Card className="w-full max-w-sm">
           <CardHeader className="items-center">
             <VersusLogo className="h-12 w-12 mb-2 text-primary" />
-            <CardTitle className="font-headline text-3xl">Versus Draft</CardTitle>
-            <CardDescription>Log in to create or join a draft room.</CardDescription>
+            <CardTitle className="font-headline text-3xl">KBA Draft</CardTitle>
+            <CardDescription>Ingresa para crear o entrar a una sala de Draft.</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               <div className="space-y-2 text-left">
-                <Label htmlFor="nickname">Nickname</Label>
+                <Label htmlFor="nickname">Usuario</Label>
                 <Input
                   id="nickname"
                   type="text"
-                  placeholder="Your Nickname"
+                  placeholder="Nickname"
                   required
                   value={email.split('@')[0]}
                   onChange={(e) => setEmail(generateEmail(e.target.value))}
@@ -87,12 +87,12 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2 text-left">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Contraseña</Label>
                  <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="password"
+                    placeholder="nickname123"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -112,12 +112,12 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="flex-col gap-4">
               <Button type="submit" className="w-full font-bold" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Log In'}
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Ingresar'}
               </Button>
                <p className="text-xs text-muted-foreground">
-                Don't have an account?{' '}
+                No tienes una cuenta?{' '}
                 <Link href="/signup" className="text-accent hover:underline">
-                  Sign Up
+                  Registrate
                 </Link>
               </p>
             </CardFooter>
