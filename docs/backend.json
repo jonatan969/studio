@@ -1,0 +1,352 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username of the user. Must be unique."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user (e.g., 'admin', 'player')."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "role"
+      ]
+    },
+    "Room": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Room",
+      "type": "object",
+      "description": "Represents a draft room.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the room."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the room."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to the User who created the room. (Relationship: User 1:N Room)"
+        },
+        "maxOrangeTeamPlayers": {
+          "type": "number",
+          "description": "Maximum number of players allowed on the Orange team."
+        },
+        "maxPurpleTeamPlayers": {
+          "type": "number",
+          "description": "Maximum number of players allowed on the Purple team."
+        },
+        "maxSpectators": {
+          "type": "number",
+          "description": "Maximum number of spectators allowed in the room."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the room (e.g., 'open', 'in_progress', 'closed')."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "adminId",
+        "maxOrangeTeamPlayers",
+        "maxPurpleTeamPlayers",
+        "maxSpectators",
+        "status"
+      ]
+    },
+    "RoomPlayer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RoomPlayer",
+      "type": "object",
+      "description": "Represents a player's presence in a room.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the room player relationship."
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Reference to the Room. (Relationship: Room 1:N RoomPlayer)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User. (Relationship: User 1:N RoomPlayer)"
+        },
+        "team": {
+          "type": "string",
+          "description": "The team the player is on (e.g., 'orange', 'purple', 'spectator')."
+        },
+        "characterId": {
+          "type": "string",
+          "description": "Reference to the Character selected by the player. Null if no character has been selected yet. (Relationship: Character 1:N RoomPlayer)"
+        },
+        "superArtId": {
+          "type": "string",
+          "description": "Reference to the SuperArt selected by the player. Null if no SuperArt has been selected yet."
+        }
+      },
+      "required": [
+        "id",
+        "roomId",
+        "userId",
+        "team"
+      ]
+    },
+    "Character": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Character",
+      "type": "object",
+      "description": "Represents a character available for drafting.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the character."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the character."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the character."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the character's image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "imageUrl"
+      ]
+    },
+    "SuperArt": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SuperArt",
+      "type": "object",
+      "description": "Represents a Super Art that can be selected.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Super Art."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Super Art."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the Super Art."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the Super Art's image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "imageUrl"
+      ]
+    },
+    "DraftSelection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DraftSelection",
+      "type": "object",
+      "description": "Represents a character selection during a draft round.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the draft selection."
+        },
+        "roomId": {
+          "type": "string",
+          "description": "Reference to the Room. (Relationship: Room 1:N DraftSelection)"
+        },
+        "characterId": {
+          "type": "string",
+          "description": "Reference to the Character selected. (Relationship: Character 1:N DraftSelection)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who made the selection. (Relationship: User 1:N DraftSelection)"
+        },
+        "selectionOrder": {
+          "type": "number",
+          "description": "The order in which the character was selected during the draft."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the selection was made.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "roomId",
+        "characterId",
+        "userId",
+        "selectionOrder",
+        "timestamp"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.  Each document contains user-specific information.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}",
+        "definition": {
+          "entityName": "Room",
+          "schema": {
+            "$ref": "#/backend/entities/Room"
+          },
+          "description": "Stores room data, including settings and status.",
+          "params": [
+            {
+              "name": "roomId",
+              "description": "The unique identifier for the room."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}/roomPlayers/{roomPlayerId}",
+        "definition": {
+          "entityName": "RoomPlayer",
+          "schema": {
+            "$ref": "#/backend/entities/RoomPlayer"
+          },
+          "description": "Stores player information for each room. Includes denormalized 'adminId', 'maxOrangeTeamPlayers', 'maxPurpleTeamPlayers', 'maxSpectators', 'status' from the parent Room document for authorization independence.",
+          "params": [
+            {
+              "name": "roomId",
+              "description": "The unique identifier for the room."
+            },
+            {
+              "name": "roomPlayerId",
+              "description": "The unique identifier for the room player relationship."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/characters/{characterId}",
+        "definition": {
+          "entityName": "Character",
+          "schema": {
+            "$ref": "#/backend/entities/Character"
+          },
+          "description": "Stores character data.",
+          "params": [
+            {
+              "name": "characterId",
+              "description": "The unique identifier for the character."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/superArts/{superArtId}",
+        "definition": {
+          "entityName": "SuperArt",
+          "schema": {
+            "$ref": "#/backend/entities/SuperArt"
+          },
+          "description": "Stores super art data.",
+          "params": [
+            {
+              "name": "superArtId",
+              "description": "The unique identifier for the super art."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/rooms/{roomId}/draftSelections/{draftSelectionId}",
+        "definition": {
+          "entityName": "DraftSelection",
+          "schema": {
+            "$ref": "#/backend/entities/DraftSelection"
+          },
+          "description": "Stores draft selections made in each room.",
+          "params": [
+            {
+              "name": "roomId",
+              "description": "The unique identifier for the room."
+            },
+            {
+              "name": "draftSelectionId",
+              "description": "The unique identifier for the draft selection."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection to store admin user IDs. Existence of a document indicates admin role.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the character draft system, focusing on authorization independence, clarity, and scalability. User data is stored in `/users/{userId}`, ensuring straightforward access and management. Rooms are located at `/rooms/{roomId}`, each containing details about the room's configuration and status. Player participation within rooms is modeled using the `/rooms/{roomId}/roomPlayers/{roomPlayerId}` subcollection.  Denormalization is applied by copying relevant `Room` data (e.g., `adminId`, `maxOrangeTeamPlayers`, `maxPurpleTeamPlayers`, `maxSpectators`, `status`) into each `RoomPlayer` document to guarantee authorization independence. This eliminates the need for `get()` calls in security rules when accessing player-specific room data. The `team` attribute within `RoomPlayer` also denormalizes team information for easy access. Draft selections are tracked within each room using the `/rooms/{roomId}/draftSelections/{draftSelectionId}` subcollection. This structure facilitates QAPs by using path-based rules for user-owned data and leveraging denormalization to avoid complex rule evaluations. Global roles are managed through the `/roles_admin/{userId}` collection, allowing for simple existence checks to determine administrative privileges. The segregation of room-specific data into subcollections ensures each document shares the same security posture, further simplifying rule creation and maintenance."
+  }
+}
