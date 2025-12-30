@@ -22,33 +22,33 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="w-full h-full flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl text-center animate-in fade-in-50 zoom-in-95 duration-500">
         <CardHeader>
-          <CardTitle className="font-headline text-4xl">Select Your Super Art</CardTitle>
+          <CardTitle className="font-headline text-3xl md:text-4xl">Select Your Super Art</CardTitle>
           <CardDescription>This choice is hidden until the reveal. Choose wisely.</CardDescription>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-3 gap-6">
+        <CardContent className="grid md:grid-cols-3 gap-4 md:gap-6">
           {SUPER_ARTS.map((art) => (
             <div
               key={art.id}
               onClick={() => !isSubmitting && setSelectedArt(art)}
               className={cn(
-                'p-6 rounded-lg border-2 transition-all duration-200 relative',
+                'p-4 md:p-6 rounded-lg border-2 transition-all duration-200 relative',
                 isSubmitting ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                 selectedArt?.id === art.id ? 'border-accent bg-accent/10' : 'border-border hover:border-primary'
               )}
             >
               {selectedArt?.id === art.id && (
-                <CheckCircle className="absolute top-3 right-3 h-6 w-6 text-accent" />
+                <CheckCircle className="absolute top-2 right-2 h-5 w-5 md:h-6 md:w-6 text-accent" />
               )}
-              <h3 className="font-headline text-xl text-accent font-bold mb-2">{art.name}</h3>
-              <p className="text-muted-foreground">{art.description}</p>
+              <h3 className="font-headline text-lg md:text-xl text-accent font-bold mb-2">{art.name}</h3>
+              <p className="text-muted-foreground text-sm md:text-base">{art.description}</p>
             </div>
           ))}
         </CardContent>
         <CardContent>
-          <Button onClick={handleSubmit} disabled={!selectedArt || isSubmitting} className="w-full max-w-xs mx-auto font-bold text-lg py-6">
+          <Button onClick={handleSubmit} disabled={!selectedArt || isSubmitting} className="w-full max-w-xs mx-auto font-bold text-md md:text-lg py-5 md:py-6">
             {isSubmitting ? (
               <>
                 <CheckCircle className="mr-2" />

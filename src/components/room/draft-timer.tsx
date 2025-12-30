@@ -17,13 +17,13 @@ export function DraftTimer({ phaseText, timeLeft, maxTime, currentTeamName, curr
   const teamColorClass = currentTeamId === 'team1' ? 'text-orange-400' : 'text-purple-400';
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 rounded-lg bg-card border border-border/50 shadow-lg">
+    <div className="w-full max-w-2xl p-3 sm:p-4 rounded-lg bg-card border border-border/50 shadow-lg">
       <div className="flex items-center justify-between mb-2">
         <div className='text-left'>
-            <p className="text-lg font-headline font-bold">{phaseText}</p>
-            {currentTeamName && <p className={`text-sm font-semibold ${teamColorClass}`}>{teamText}</p>}
+            <p className="text-base sm:text-lg font-headline font-bold">{phaseText}</p>
+            {currentTeamName && <p className={`text-xs sm:text-sm font-semibold ${teamColorClass}`}>{teamText}</p>}
         </div>
-        <p className="text-4xl font-bold font-mono">{formatTime(timeLeft)}</p>
+        <p className="text-3xl sm:text-4xl font-bold font-mono">{formatTime(timeLeft)}</p>
       </div>
       <Progress value={progress} className="h-2" />
     </div>

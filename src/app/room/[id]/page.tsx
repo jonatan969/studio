@@ -252,7 +252,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                  maxTime: DRAFT_PICK_TIME,
              });
              const nextTeamName = roomData[nextTurnInfo.team === 'team1' ? 'team1Name' : 'team2Name'];
-             dispatch({type: 'LOG', message: `It's Team ${nextTeamName}'s turn to pick.`});
+             dispatch({type: 'LOG', message: `It's ${nextTeamName}'s turn to pick.`});
          }
     }
   }, [draftPicks, roomData, firestore, user, roomRef]);
@@ -347,7 +347,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             maxTime: DRAFT_PICK_TIME,
         });
         const winnerTeamName = roomData[winner === 'team1' ? 'team1Name' : 'team2Name'];
-        dispatch({type: 'LOG', message: `Team ${winnerTeamName} won the toss and will pick first!`});
+        dispatch({type: 'LOG', message: `${winnerTeamName} won the toss and will pick first!`});
     }
   }
   
@@ -405,7 +405,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader />
       <main className="flex-grow container py-4 md:py-8 flex flex-col gap-4">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <DraftTimer
             phaseText={getPhaseText()}
             timeLeft={roomData.timeLeft || 0}
@@ -413,25 +413,25 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             currentTeamName={roomData.currentPicker ? roomData[roomData.currentPicker === 'team1' ? 'team1Name': 'team2Name'] : null}
             currentTeamId={roomData.currentPicker || null}
             />
-             <div className="flex items-center gap-2">
+             <div className="flex items-center gap-2 self-end sm:self-center">
                 {userPlayerInfo && roomData.phase === 'PREP' && (
-                    <Button variant="outline" onClick={() => setSwitchTeamDialogOpen(true)}>
+                    <Button variant="outline" size="sm" onClick={() => setSwitchTeamDialogOpen(true)}>
                         <Swords className="mr-2 h-4 w-4" /> Switch Team
                     </Button>
                 )}
-                <Button variant="destructive" onClick={handleLeaveRoom}>
-                    <LogOut className="mr-2" /> Leave Room
+                <Button variant="destructive" size="sm" onClick={handleLeaveRoom}>
+                    <LogOut className="mr-2" /> Leave
                 </Button>
             </div>
         </div>
-        <div className="flex-grow grid grid-cols-1 md:grid-cols-[1fr_2.5fr_1fr] gap-4">
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_2.5fr_1fr] gap-4">
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center">
             {roomData.phase === 'COIN_FLIP' && roomData.timeLeft! <= 0 && <CoinFlip onComplete={handleCoinFlipResult} />}
 
             {roomData.phase === 'DRAFTING' && (
-                <div className="grid grid-cols-4 gap-2 p-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 sm:gap-2 p-2 w-full">
                     {CHARACTERS.map(char => (
                         <CharacterSquare
                             key={char.id}
@@ -449,12 +449,12 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                 <SuperArtSpectatorView allPicks={allFinalPicks} />
             )}
              {roomData.phase === 'PREP' && (
-                 <Card className="w-full h-full flex flex-col items-center justify-center">
+                 <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                     <CardHeader>
                         <CardTitle className="font-headline text-2xl">Waiting Room</CardTitle>
                     </CardHeader>
-                    <CardContent className="text-center">
-                        <p>Waiting for teams to fill up before the draft begins.</p>
+                    <CardContent>
+                        <p className="text-muted-foreground">Waiting for teams to fill up before the draft begins.</p>
                         <Loader2 className="animate-spin mx-auto mt-4" />
                     </CardContent>
                  </Card>
@@ -486,7 +486,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-24 w-full">
-                        <div className="space-y-2 text-sm">
+                        <div className="space-y-2 text-sm pr-4">
                             {state.log.length > 0 ? state.log.map((log, i) => <p key={i}>{log}</p>) : <p className="text-sm text-muted-foreground">Draft has not started.</p>}
                         </div>
                     </ScrollArea>

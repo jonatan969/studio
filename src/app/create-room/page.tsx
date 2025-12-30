@@ -23,8 +23,8 @@ const createRoomSchema = z.object({
   team2Name: z.string().min(1, 'Team name is required'),
   playersPerTeam: z.number().min(1).max(10),
   spectatorLimit: z.number().min(0).max(10),
-  team1Logo: z.string().url('Please enter a valid URL for Team 1 logo'),
-  team2Logo: z.string().url('Please enter a valid URL for Team 2 logo'),
+  team1Logo: z.string().url('Please enter a valid URL for Team 1 logo').or(z.literal('')),
+  team2Logo: z.string().url('Please enter a valid URL for Team 2 logo').or(z.literal('')),
   joinPreference: z.enum(['team1', 'team2', 'spectator']),
 });
 
@@ -59,6 +59,8 @@ export default function CreateRoomPage() {
 
   const playersPerTeam = watch('playersPerTeam');
   const spectatorLimit = watch('spectatorLimit');
+  const team1Name = watch('team1Name');
+  const team2Name = watch('team2Name');
 
   const onSubmit = async (data: CreateRoomForm) => {
     if (!user || !firestore) {
@@ -116,21 +118,21 @@ export default function CreateRoomPage() {
   return (
     <div className="min-h-screen bg-background">
       <PageHeader />
-      <main className="container py-8">
+      <main className="container py-4 sm:py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
-            <CardTitle className="font-headline text-3xl">Create a New Draft Room</CardTitle>
+            <CardTitle className="font-headline text-2xl sm:text-3xl">Create a New Draft Room</CardTitle>
             <CardDescription>Customize your draft settings and invite others to join.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
               <div className="space-y-2">
                 <Label htmlFor="roomName">Room Name</Label>
                 <Input id="roomName" {...register('roomName')} />
                 {errors.roomName && <p className="text-destructive text-sm">{errors.roomName.message}</p>}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 {/* Team 1 Settings */}
                 <div className="space-y-4 p-4 border rounded-lg">
                   <h3 className="font-headline text-xl text-orange-400">Team 1</h3>
@@ -205,17 +207,17 @@ export default function CreateRoomPage() {
                     <RadioGroup
                         onValueChange={field.onChange}
                         value={field.value}
-                        className="flex flex-col md:flex-row gap-4"
+                        className="flex flex-col sm:flex-row gap-4"
                     >
-                        <Label className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
+                        <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="team1" id="team1" />
-                            Join {watch('team1Name')}
+                            Join {team1Name || 'Team 1'}
                         </Label>
-                        <Label className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
+                        <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="team2" id="team2" />
-                            Join {watch('team2Name')}
+                            Join {team2Name || 'Team 2'}
                         </Label>
-                         <Label className="flex items-center gap-2 p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
+                         <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
                             <RadioGroupItem value="spectator" id="spectator" />
                             Join as Spectator
                         </Label>

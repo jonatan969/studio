@@ -39,7 +39,7 @@ function TypingEffect({ text, onFinished }: { text: string; onFinished: () => vo
     return () => clearInterval(intervalId);
   }, [text, onFinished]);
 
-  return <p className="text-2xl md:text-4xl font-headline text-center italic text-slate-300 max-w-4xl">{displayedText}</p>;
+  return <p className="text-xl sm:text-2xl md:text-4xl font-headline text-center italic text-slate-300 max-w-4xl">{displayedText}</p>;
 }
 
 export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onComplete }: DramaticRevealProps) {
@@ -70,25 +70,25 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
 
   if (showAll) {
     return (
-        <div className="absolute inset-0 z-50 w-full h-full bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8 animate-in fade-in-50 duration-500 overflow-y-auto">
-            <h2 className="text-5xl font-headline font-bold text-accent mb-8">Final Selections</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
+        <div className="absolute inset-0 z-50 w-full h-full bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in-50 duration-500 overflow-y-auto">
+            <h2 className="text-3xl sm:text-5xl font-headline font-bold text-accent mb-4 sm:mb-8">Final Selections</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 w-full max-w-6xl">
                 {['team1', 'team2'].map(teamId => (
                     <div key={teamId}>
-                        <h3 className={`text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? 'Team 1' : 'Team 2'}</h3>
-                        <div className="space-y-4">
+                        <h3 className={`text-2xl sm:text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? allPicks.find(p => p.team === 'team1')?.teamName || 'Team 1' : allPicks.find(p => p.team === 'team2')?.teamName || 'Team 2'}</h3>
+                        <div className="space-y-3 sm:space-y-4">
                             {allPicks.filter(p => p.team === teamId).map((pick, index) => (
-                                <Card key={index} className="bg-card/80 p-4 rounded-lg flex justify-between items-center">
-                                    <div className='flex items-center gap-4'>
-                                        <div className='relative w-12 h-12 rounded-md overflow-hidden'>
+                                <Card key={index} className="bg-card/80 p-3 sm:p-4 rounded-lg flex justify-between items-center">
+                                    <div className='flex items-center gap-3 sm:gap-4'>
+                                        <div className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden'>
                                             <Image src={pick.image} alt={pick.name} fill className='object-cover' />
                                         </div>
-                                        <p className="font-bold text-lg">{pick.name}</p>
+                                        <p className="font-bold text-base sm:text-lg">{pick.name}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {pick.superArt && (
                                             <>
-                                                <p className="text-accent font-semibold">{pick.superArt.name}</p>
+                                                <p className="text-accent font-semibold hidden sm:block">{pick.superArt.name}</p>
                                                 <SuperArtIcon art={pick.superArt} />
                                             </>
                                         )}
@@ -99,13 +99,13 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
                     </div>
                 ))}
             </div>
-            <Button onClick={onComplete} className="mt-12">Finish</Button>
+            <Button onClick={onComplete} className="mt-8 sm:mt-12">Finish</Button>
         </div>
     );
   }
 
   return (
-    <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-8">
+    <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
       {isLoading ? (
         <p className="text-2xl text-white">Forging destinies...</p>
       ) : (
