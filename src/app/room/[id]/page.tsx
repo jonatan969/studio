@@ -365,7 +365,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             </Button>
         </div>
         <div className="flex-grow grid grid-cols-1 md:grid-cols-[1fr_2.5fr_1fr] gap-4">
-          <TeamDisplay teamName={roomData.team1Name} teamId="team1" players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
+          <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center">
             {roomData.phase === 'COIN_FLIP' && roomData.timeLeft! > 0 && <p className="text-2xl font-bold">Draft starts in {roomData.timeLeft}...</p>}
@@ -402,7 +402,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
              )}
           </div>
           
-          <TeamDisplay teamName={roomData.team2Name} teamId="team2" players={team2Players} picks={team2Picks} isPicking={roomData.currentPicker === 'team2'} maxPlayers={roomData.playersPerTeam}/>
+          <TeamDisplay teamName={roomData.team2Name} teamId="team2" teamLogo={roomData.team2Logo} players={team2Players} picks={team2Picks} isPicking={roomData.currentPicker === 'team2'} maxPlayers={roomData.playersPerTeam}/>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
@@ -478,5 +478,3 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     </div>
   );
 }
-
-    

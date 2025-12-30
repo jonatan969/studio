@@ -13,11 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload } from 'lucide-react';
-import { TEAM_LOGOS } from '@/lib/game-data';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import { useUser, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { Loader2 } from 'lucide-react';
+import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
 const createRoomSchema = z.object({
@@ -26,8 +23,8 @@ const createRoomSchema = z.object({
   team2Name: z.string().min(1, 'Team name is required'),
   playersPerTeam: z.number().min(1).max(10),
   spectatorLimit: z.number().min(0).max(10),
-  team1Logo: z.string(),
-  team2Logo: z.string(),
+  team1Logo: z.string().url('Please enter a valid URL for Team 1 logo'),
+  team2Logo: z.string().url('Please enter a valid URL for Team 2 logo'),
   joinPreference: z.enum(['team1', 'team2', 'spectator']),
 });
 
@@ -39,15 +36,12 @@ export default function CreateRoomPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
-  const [team1LogoPreview, setTeam1LogoPreview] = useState<string | null>(null);
-  const [team2LogoPreview, setTeam2LogoPreview] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     control,
     watch,
-    setValue,
     formState: { errors },
   } = useForm<CreateRoomForm>({
     resolver: zodResolver(createRoomSchema),
@@ -57,8 +51,8 @@ export default function CreateRoomPage() {
       team2Name: 'Team Bravo',
       playersPerTeam: 6,
       spectatorLimit: 4,
-      team1Logo: TEAM_LOGOS[0].id,
-      team2Logo: TEAM_LOGOS[1].id,
+      team1Logo: '',
+      team2Logo: '',
       joinPreference: 'team1',
     },
   });
@@ -117,24 +111,6 @@ export default function CreateRoomPage() {
     }
   };
   
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, team: 'team1' | 'team2') => {
-      if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              const dataUrl = reader.result as string;
-              if (team === 'team1') {
-                  setTeam1LogoPreview(dataUrl);
-                  setValue('team1Logo', dataUrl);
-              } else {
-                  setTeam2LogoPreview(dataUrl);
-                  setValue('team2Logo', dataUrl);
-              }
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
   if(isUserLoading) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin" /></div>
 
   return (
@@ -164,36 +140,9 @@ export default function CreateRoomPage() {
                     {errors.team1Name && <p className="text-destructive text-sm">{errors.team1Name.message}</p>}
                   </div>
                   <div className="space-y-2">
-                     <Label>Team 1 Logo</Label>
-                     <Controller
-                        name="team1Logo"
-                        control={control}
-                        render={({ field }) => (
-                           <RadioGroup
-                              value={field.value}
-                              onValueChange={(value) => {
-                                  field.onChange(value);
-                                  setTeam1LogoPreview(null);
-                              }}
-                              className="flex flex-wrap gap-2"
-                           >
-                              {TEAM_LOGOS.map((logo) => (
-                                 <RadioGroupItem key={logo.id} value={logo.id} id={`t1-${logo.id}`} className="sr-only" />
-                                 ))}
-                                 <div className="flex flex-wrap gap-2">
-                                    {TEAM_LOGOS.map((logo) => (
-                                        <Label key={logo.id} htmlFor={`t1-${logo.id}`} className={cn("p-2 border-2 rounded-md cursor-pointer hover:border-primary", field.value === logo.id && 'border-primary bg-primary/10')}>
-                                           <div className="w-8 h-8" dangerouslySetInnerHTML={{ __html: logo.svg }} />
-                                        </Label>
-                                    ))}
-                                    <Label htmlFor="team1-logo-upload" className={cn("p-2 border-2 rounded-md cursor-pointer hover:border-primary flex items-center justify-center w-12 h-12", team1LogoPreview && 'border-primary bg-primary/10')}>
-                                        {team1LogoPreview ? <Image src={team1LogoPreview} alt="Team 1 preview" width={32} height={32} /> : <Upload />}
-                                    </Label>
-                                    <Input id="team1-logo-upload" type="file" className="sr-only" onChange={(e) => handleLogoUpload(e, 'team1')} />
-                                 </div>
-                           </RadioGroup>
-                        )}
-                     />
+                     <Label htmlFor="team1Logo">Team 1 Logo URL</Label>
+                     <Input id="team1Logo" {...register('team1Logo')} placeholder="https://example.com/logo1.png" />
+                     {errors.team1Logo && <p className="text-destructive text-sm">{errors.team1Logo.message}</p>}
                   </div>
                 </div>
 
@@ -206,36 +155,9 @@ export default function CreateRoomPage() {
                      {errors.team2Name && <p className="text-destructive text-sm">{errors.team2Name.message}</p>}
                   </div>
                    <div className="space-y-2">
-                     <Label>Team 2 Logo</Label>
-                     <Controller
-                        name="team2Logo"
-                        control={control}
-                        render={({ field }) => (
-                           <RadioGroup
-                              value={field.value}
-                              onValueChange={(value) => {
-                                  field.onChange(value);
-                                  setTeam2LogoPreview(null);
-                              }}
-                              className="flex flex-wrap gap-2"
-                           >
-                              {TEAM_LOGOS.map((logo) => (
-                                 <RadioGroupItem key={logo.id} value={logo.id} id={`t2-${logo.id}`} className="sr-only" />
-                                  ))}
-                                  <div className="flex flex-wrap gap-2">
-                                    {TEAM_LOGOS.map((logo) => (
-                                        <Label key={logo.id} htmlFor={`t2-${logo.id}`} className={cn("p-2 border-2 rounded-md cursor-pointer hover:border-primary", field.value === logo.id && 'border-primary bg-primary/10')}>
-                                           <div className="w-8 h-8" dangerouslySetInnerHTML={{ __html: logo.svg }} />
-                                        </Label>
-                                    ))}
-                                    <Label htmlFor="team2-logo-upload" className={cn("p-2 border-2 rounded-md cursor-pointer hover:border-primary flex items-center justify-center w-12 h-12", team2LogoPreview && 'border-primary bg-primary/10')}>
-                                        {team2LogoPreview ? <Image src={team2LogoPreview} alt="Team 2 preview" width={32} height={32} /> : <Upload />}
-                                    </Label>
-                                    <Input id="team2-logo-upload" type="file" className="sr-only" onChange={(e) => handleLogoUpload(e, 'team2')} />
-                                  </div>
-                           </RadioGroup>
-                        )}
-                     />
+                     <Label htmlFor="team2Logo">Team 2 Logo URL</Label>
+                     <Input id="team2Logo" {...register('team2Logo')} placeholder="https://example.com/logo2.png" />
+                     {errors.team2Logo && <p className="text-destructive text-sm">{errors.team2Logo.message}</p>}
                   </div>
                 </div>
               </div>

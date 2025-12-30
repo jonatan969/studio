@@ -5,20 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { User, ShieldCheck } from 'lucide-react';
-import { RoomPlayer, DraftPick } from '@/lib/types';
+import { RoomPlayer, DraftPick, Room } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 
 interface TeamDisplayProps {
   teamName: string;
   teamId: 'team1' | 'team2';
+  teamLogo?: string | null;
   players: RoomPlayer[];
   picks: DraftPick[];
   isPicking: boolean;
   maxPlayers: number;
 }
 
-export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPlayers }: TeamDisplayProps) {
+export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPicking, maxPlayers }: TeamDisplayProps) {
   const teamColor = teamId === 'team1' ? 'border-orange-500' : 'border-purple-500';
   const teamTextColor = teamId === 'team1' ? 'text-orange-500' : 'text-purple-500';
 
@@ -29,8 +30,9 @@ export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPl
 
   return (
     <Card className={cn('flex flex-col h-full transition-all duration-300 border-2 bg-card/50', isPicking ? teamColor : 'border-transparent', isPicking ? 'shadow-lg shadow-primary/20' : '')}>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className={cn('font-headline text-2xl', teamTextColor)}>{teamName}</CardTitle>
+        {teamLogo && <Image src={teamLogo} alt={`${teamName} logo`} width={40} height={40} className="rounded-md" />}
       </CardHeader>
       <CardContent className="flex-grow space-y-2">
         {Array.from({ length: maxPlayers }).map((_, index) => {
@@ -75,5 +77,3 @@ export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPl
     </Card>
   );
 }
-
-    
