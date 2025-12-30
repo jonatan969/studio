@@ -6,19 +6,22 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Room, RoomPlayer } from "@/lib/types";
-import { Users, UserCheck } from "lucide-react";
+import { Users, UserCheck, X } from "lucide-react";
 
-interface JoinRoomDialogProps {
+interface SwitchTeamDialogProps {
   isOpen: boolean;
-  onJoin: (team: 'team1' | 'team2' | 'spectator') => void;
+  onClose: () => void;
+  onSwitchTeam: (team: 'team1' | 'team2' | 'spectator') => void;
   roomData: Room | null;
   players: RoomPlayer[];
 }
 
-export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDialogProps) {
+export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, players }: SwitchTeamDialogProps) {
   if (!roomData) return null;
 
   const team1Count = players.filter(p => p.team === 'team1').length;
@@ -29,22 +32,19 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
   const isTeam2Full = team2Count >= roomData.playersPerTeam;
   const areSpectatorsFull = spectatorCount >= roomData.spectatorLimit;
   
-  // Players can only join teams during the PREP phase. After that, it's spectators only.
-  const canJoinAsPlayer = roomData.phase === 'PREP';
-
   return (
-    <Dialog open={isOpen}>
-      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Join Room: {roomData.name}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Switch Team</DialogTitle>
           <DialogDescription>
-            {canJoinAsPlayer ? "Choose a team or join as a spectator." : "Draft in progress. You can only join as a spectator."}
+            You can switch teams or become a spectator while the room is waiting for players.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Button 
-            onClick={() => onJoin('team1')} 
-            disabled={isTeam1Full || !canJoinAsPlayer}
+            onClick={() => onSwitchTeam('team1')} 
+            disabled={isTeam1Full}
             className="w-full justify-between"
             variant="outline"
           >
@@ -52,8 +52,8 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team1Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
-            onClick={() => onJoin('team2')} 
-            disabled={isTeam2Full || !canJoinAsPlayer}
+            onClick={() => onSwitchTeam('team2')} 
+            disabled={isTeam2Full}
             className="w-full justify-between"
             variant="outline"
           >
@@ -61,7 +61,7 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-4 h-4" />{team2Count}/{roomData.playersPerTeam}</span>
           </Button>
           <Button 
-            onClick={() => onJoin('spectator')} 
+            onClick={() => onSwitchTeam('spectator')} 
             disabled={areSpectatorsFull}
             className="w-full justify-between"
             variant="outline"
@@ -70,6 +70,11 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
             <span className="flex items-center gap-1 text-muted-foreground"><UserCheck className="w-4 h-4" />{spectatorCount}/{roomData.spectatorLimit}</span>
           </Button>
         </div>
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+            </DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
