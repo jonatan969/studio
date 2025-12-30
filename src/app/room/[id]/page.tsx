@@ -402,9 +402,9 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex min-h-screen w-full flex-col">
       <PageHeader />
-      <main className="flex-grow container py-4 md:py-8 flex flex-col gap-4">
+      <main className="flex-1 container py-4 md:py-8 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <DraftTimer
             phaseText={getPhaseText()}

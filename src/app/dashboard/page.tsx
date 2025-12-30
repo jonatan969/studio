@@ -55,9 +55,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen w-full flex-col">
       <PageHeader />
-      <main className="container py-8">
+      <main className="flex-1 container py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-headline text-4xl font-bold">Lobby</h1>
           <Button onClick={handleCreateRoom} className="font-bold">

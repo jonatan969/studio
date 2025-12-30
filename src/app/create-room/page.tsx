@@ -116,9 +116,9 @@ export default function CreateRoomPage() {
   if(isUserLoading) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin" /></div>
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen w-full flex-col">
       <PageHeader />
-      <main className="container py-4 sm:py-8">
+      <main className="flex-1 container py-4 sm:py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
             <CardTitle className="font-headline text-2xl sm:text-3xl">Create a New Draft Room</CardTitle>

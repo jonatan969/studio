@@ -10,15 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser, useFirestore, useAuth, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useAuth } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading, refreshUser } = useUser();
-  const firestore = useFirestore();
   const auth = useAuth();
   
   const [photoURL, setPhotoURL] = useState('');
@@ -52,13 +50,6 @@ export default function ProfilePage() {
       // Update Firebase Auth user profile
       await updateProfile(auth.currentUser, { photoURL: photoURL });
       
-      // Update Firestore user document
-      if (firestore) {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        // This is a non-blocking call.
-        updateDocumentNonBlocking(userDocRef, { photoURL: photoURL });
-      }
-      
       // Manually trigger a refresh of the user object to get the latest photoURL
       await refreshUser();
       
@@ -86,9 +77,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen w-full flex-col">
       <PageHeader />
-      <main className="container py-8">
+      <main className="flex-1 container py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle className="font-headline text-3xl">Your Profile</CardTitle>
