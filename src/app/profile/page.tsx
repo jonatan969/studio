@@ -18,7 +18,7 @@ import { updateProfile } from 'firebase/auth';
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, refreshUser } = useUser();
   const firestore = useFirestore();
   const firebaseApp = useFirebaseApp();
   const auth = useAuth();
@@ -65,12 +65,14 @@ export default function ProfilePage() {
       const storagePath = `profile-photos/${user.uid}`;
       const newStorageRef = ref(storage, storagePath);
 
-      // If user already has a photoURL (and it's a Firebase Storage URL), delete the old one.
-      if (user.photoURL && user.photoURL.includes('firebasestorage.googleapis.com')) {
+      // If user already has a photoURL, delete the old one.
+      // We assume the old photo exists at the same path.
+      if (user.photoURL) {
         try {
-          const oldStorageRef = ref(storage, user.photoURL);
+          const oldStorageRef = ref(storage, storagePath);
           await deleteObject(oldStorageRef);
         } catch (error: any) {
+          // It's okay if the old object wasn't found, we can ignore that error.
           if(error.code !== 'storage/object-not-found') {
              console.warn("Could not delete old profile photo:", error.message);
           }
@@ -92,6 +94,9 @@ export default function ProfilePage() {
       setNewPhoto(downloadURL); // Update preview to be the final URL
       setNewPhotoFile(null); // Clear staged file
 
+      // Manually trigger a refresh of the user object to get the latest photoURL
+      await refreshUser();
+      
       toast({
         title: 'Profile Updated',
         description: 'Your profile photo has been saved.',

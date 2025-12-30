@@ -1,6 +1,6 @@
 'use client';
 
-import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
+import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect, useCallback } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
@@ -30,6 +30,7 @@ export interface FirebaseContextState {
   user: User | null;
   isUserLoading: boolean; // True during initial auth check
   userError: Error | null; // Error from auth listener
+  refreshUser: () => Promise<void>;
 }
 
 // Return type for useFirebase()
@@ -40,6 +41,7 @@ export interface FirebaseServicesAndUser {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
+  refreshUser: () => Promise<void>;
 }
 
 // Return type for useUser() - specific to user auth state
@@ -47,6 +49,7 @@ export interface UserHookResult { // Renamed from UserAuthHookResult for consist
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
+  refreshUser: () => Promise<void>;
 }
 
 // React Context
@@ -67,6 +70,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
+  const refreshUser = useCallback(async () => {
+    if (auth.currentUser) {
+      try {
+        await auth.currentUser.reload();
+        // The onAuthStateChanged listener will automatically pick up the change
+        // and update the state, so we don't need to call setUserAuthState here.
+      } catch (error) {
+        console.error("FirebaseProvider: Error reloading user:", error);
+      }
+    }
+  }, [auth]);
+
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
     if (!auth) { // If no Auth service instance, cannot determine user state
@@ -74,7 +89,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
+    setUserAuthState({ user: auth.currentUser, isUserLoading: true, userError: null }); // Set initial state and start loading
 
     const unsubscribe = onAuthStateChanged(
       auth,
@@ -100,8 +115,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
+      refreshUser,
     };
-  }, [firebaseApp, firestore, auth, userAuthState]);
+  }, [firebaseApp, firestore, auth, userAuthState, refreshUser]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -133,6 +149,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     user: context.user,
     isUserLoading: context.isUserLoading,
     userError: context.userError,
+    refreshUser: context.refreshUser,
   };
 };
 
@@ -171,6 +188,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
-  return { user, isUserLoading, userError };
+  const { user, isUserLoading, userError, refreshUser } = useFirebase(); // Leverages the main hook
+  return { user, isUserLoading, userError, refreshUser };
 };
