@@ -1,3 +1,94 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-background",
+      "description": "Abstract futuristic purple and teal energy streams",
+      "imageUrl": "https://images.unsplash.com/photo-1748374969644-b749eecfcaad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGZ1dHVyaXN0aWN8ZW58MHx8fHwxNzY3MDIyOTA4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract futuristic"
+    },
+    {
+      "id": "char-aether",
+      "description": "A stoic warrior cloaked in cosmic energy",
+      "imageUrl": "https://images.unsplash.com/photo-1636654302178-da23e21243dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjb3NtaWMlMjB3YXJyaW9yfGVufDB8fHx8MTc2NzA2Njc4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cosmic warrior"
+    },
+    {
+      "id": "char-onyx",
+      "description": "A shadowy rogue with glowing daggers",
+      "imageUrl": "https://images.unsplash.com/photo-1651335944644-33c89ed94cc9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzaGFkb3clMjByb2d1ZXxlbnwwfHx8fDE3NjcwNjY3ODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "shadow rogue"
+    },
+    {
+      "id": "char-solara",
+      "description": "A radiant mage wielding the power of the sun",
+      "imageUrl": "https://images.unsplash.com/photo-1619198138175-2a7625348df2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzdW4lMjBtYWdlfGVufDB8fHx8MTc2NzA2Njc4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sun mage"
+    },
+    {
+      "id": "char-cypher",
+      "description": "A high-tech operative with holographic displays",
+      "imageUrl": "https://images.unsplash.com/photo-1655036387197-566206c80980?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx0ZWNoJTIwb3BlcmF0aXZlfGVufDB8fHx8MTc2NzA2Njc4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tech operative"
+    },
+    {
+      "id": "char-terra",
+      "description": "A guardian of nature, covered in moss and stone",
+      "imageUrl": "https://images.unsplash.com/photo-1622550106256-5613d43d6687?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxuYXR1cmUlMjBndWFyZGlhbnxlbnwwfHx8fDE3NjcwNjY3ODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "nature guardian"
+    },
+    {
+      "id": "char-riptide",
+      "description": "A swift fighter who controls water",
+      "imageUrl": "https://images.unsplash.com/photo-1758291462752-3a726bf1067b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d2F0ZXIlMjBmaWdodGVyfGVufDB8fHx8MTc2NzA2Njc4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "water fighter"
+    },
+    {
+      "id": "char-ignis",
+      "description": "A fiery brawler with volcanic fists",
+      "imageUrl": "https://images.unsplash.com/photo-1746003040766-535e55013dae?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxmaXJlJTIwYnJhd2xlcnxlbnwwfHx8fDE3NjcwNjY3ODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fire brawler"
+    },
+    {
+      "id": "char-zenith",
+      "description": "A wise monk who levitates with serene power",
+      "imageUrl": "https://images.unsplash.com/photo-1764413475320-22e3532a49ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3aXNlJTIwbW9ua3xlbnwwfHx8fDE3NjcwNjY3ODd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wise monk"
+    },
+    {
+      "id": "char-void",
+      "description": "A mysterious being from another dimension",
+      "imageUrl": "https://images.unsplash.com/photo-1759266925025-28ef643c497e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxkaW1lbnNpb25hbCUyMGJlaW5nfGVufDB8fHx8MTc2NzA2Njc4N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dimensional being"
+    },
+    {
+      "id": "char-crag",
+      "description": "A massive golem, a walking fortress",
+      "imageUrl": "https://images.unsplash.com/photo-1713815726796-5149beeb12fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzdG9uZSUyMGdvbGVtfGVufDB8fHx8MTc2Njk4ODIxM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "stone golem"
+    },
+    {
+      "id": "char-zephyr",
+      "description": "An agile scout who commands the wind",
+      "imageUrl": "https://images.unsplash.com/photo-1703243052289-6c7940c3d481?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3aW5kJTIwc2NvdXR8ZW58MHx8fHwxNzY3MDY2Nzg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wind scout"
+    },
+    {
+      "id": "char-luna",
+      "description": "An illusionist who weaves moonlight into spells",
+      "imageUrl": "https://images.unsplash.com/photo-1759545809864-f5f766827780?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb29uJTIwaWxsdXNpb25pc3R8ZW58MHx8fHwxNzY3MDY2Nzg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "moon illusionist"
+    },
+    {
+      "id": "room-1",
+      "description": "A brightly lit arena with floating platforms",
+      "imageUrl": "https://images.unsplash.com/photo-1763811940007-aefb3e52f3d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxmdXR1cmlzdGljJTIwYXJlbmF8ZW58MHx8fHwxNzY3MDY2Nzg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "futuristic arena"
+    },
+    {
+      "id": "room-2",
+      "description": "A dark, moody cyber-punk city street",
+      "imageUrl": "https://images.unsplash.com/photo-1573767291321-c0af2eaf5266?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjeWJlcnB1bmslMjBjaXR5fGVufDB8fHx8MTc2Njk0NzIyM3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cyberpunk city"
+    }
+  ]
 }
