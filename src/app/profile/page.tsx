@@ -10,11 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
-import { useUser, useFirestore, useFirebaseApp } from '@/firebase';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { useUser, useFirestore, useFirebaseApp, updateDocumentNonBlocking } from '@/firebase';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { updateDocumentNonBlocking } from '@/firebase';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -45,23 +44,45 @@ export default function ProfilePage() {
     }
   };
   
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
   }
 
   const handleSave = async () => {
-    if (!user || !newPhoto || !newPhoto.startsWith('data:')) return;
+    if (!user || !newPhoto) return;
+    
+    // Only proceed if the new photo is a data URL (i.e., a new upload)
+    if (!newPhoto.startsWith('data:')) {
+      toast({ title: 'No Changes', description: 'You have not selected a new photo to upload.' });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
       const storage = getStorage(firebaseApp);
-      const storageRef = ref(storage, `profile-photos/${user.uid}`);
-      
-      await uploadString(storageRef, newPhoto, 'data_url');
-      const downloadURL = await getDownloadURL(storageRef);
+      const storagePath = `profile-photos/${user.uid}`;
+      const newStorageRef = ref(storage, storagePath);
 
+      // If user already has a photoURL (and it's a Firebase Storage URL), delete the old one.
+      if (user.photoURL && user.photoURL.includes('firebasestorage.googleapis.com')) {
+        try {
+          const oldStorageRef = ref(storage, user.photoURL);
+          await deleteObject(oldStorageRef);
+        } catch (error: any) {
+          // Log deletion error but don't block the update process
+          // It might fail if rules change or file doesn't exist, which is okay.
+          console.warn("Could not delete old profile photo:", error.message);
+        }
+      }
+      
+      await uploadString(newStorageRef, newPhoto, 'data_url');
+      const downloadURL = await getDownloadURL(newStorageRef);
+
+      // Update Firebase Auth user profile
       await updateProfile(user, { photoURL: downloadURL });
       
+      // Update Firestore user document
       const userDocRef = doc(firestore, 'users', user.uid);
       updateDocumentNonBlocking(userDocRef, { photoURL: downloadURL });
 
