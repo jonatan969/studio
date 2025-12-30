@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
-import { useEffect, useReducer, useState, useCallback, useMemo, use } from 'react';
+import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -44,7 +44,7 @@ function draftReducer(state: DraftState, action: {type: 'LOG', message: string})
 
 export default function RoomPage({ params }: { params: { id: string }}) {
   const router = useRouter();
-  const roomId = use(params).id;
+  const roomId = params.id;
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -372,6 +372,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   const bannedCharacterIds = draftPicks?.map(p => p.characterId) || [];
   
   const getPhaseText = () => {
+    if (!roomData) return '';
     switch (roomData.phase) {
       case 'PREP': return `Esperando jugadores...`;
       case 'COIN_FLIP': return `El draft comienza en ${roomData.timeLeft}s...`;
@@ -398,6 +399,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   }
 
   const getInitials = (name: string | null) => {
+    if (!name) return '';
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   }
 
