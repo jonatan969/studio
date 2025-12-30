@@ -75,3 +75,5 @@ export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPl
     </Card>
   );
 }
+
+    

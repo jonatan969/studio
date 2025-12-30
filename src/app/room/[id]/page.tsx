@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { History, Loader2, LogOut, ShieldAlert } from 'lucide-react';
+import { History, Loader2, LogOut, ShieldAlert, Users } from 'lucide-react';
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -21,6 +21,8 @@ import { doc, collection, writeBatch, deleteDoc, runTransaction } from 'firebase
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 type DraftPhase = 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
@@ -33,7 +35,7 @@ interface DraftState {
 function draftReducer(state: DraftState, action: {type: 'LOG', message: string}): DraftState {
   switch (action.type) {
     case 'LOG':
-      return { ...state, log: [...state.log, action.message] };
+      return { ...state, log: [action.message, ...state.log] };
     default:
       return state;
   }
@@ -312,6 +314,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
 
   const team1Players = players?.filter(p => p.team === 'team1') || [];
   const team2Players = players?.filter(p => p.team === 'team2') || [];
+  const spectators = players?.filter(p => p.team === 'spectator') || [];
 
   const team1Picks = draftPicks?.filter(p => p.team === 'team1') || [];
   const team2Picks = draftPicks?.filter(p => p.team === 'team2') || [];
@@ -339,6 +342,10 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     if (user?.uid === roomData?.adminId && roomRef) {
         updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', timeLeft: ROOM_CLOSE_TIME, maxTime: ROOM_CLOSE_TIME });
     }
+  }
+
+  const getInitials = (name: string | null) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   }
 
   return (
@@ -382,21 +389,50 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && (
                 <SuperArtSpectatorView allPicks={allFinalPicks} />
             )}
-             {(roomData.phase === 'PREP' || roomData.phase === 'FINISHED' || roomData.phase === 'CANCELED') && (
+             {roomData.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center">
                     <CardHeader>
-                        <CardTitle className="font-headline text-2xl flex items-center gap-2"><History/> Draft Log</CardTitle>
+                        <CardTitle className="font-headline text-2xl">Waiting Room</CardTitle>
                     </CardHeader>
-                    <CardContent className="w-full">
-                        <div className="h-96 overflow-y-auto space-y-2 text-sm p-4 bg-secondary/30 rounded-md">
-                            {state.log.map((log, i) => <p key={i}>{log}</p>)}
-                        </div>
+                    <CardContent className="text-center">
+                        <p>Waiting for teams to fill up before the draft begins.</p>
+                        <Loader2 className="animate-spin mx-auto mt-4" />
                     </CardContent>
                  </Card>
              )}
           </div>
           
           <TeamDisplay teamName={roomData.team2Name} teamId="team2" players={team2Players} picks={team2Picks} isPicking={roomData.currentPicker === 'team2'} maxPlayers={roomData.playersPerTeam}/>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center gap-2"><Users /> Spectators ({spectators.length}/{roomData.spectatorLimit})</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-4">
+                    {spectators.length > 0 ? spectators.map(spec => (
+                        <div key={spec.uid} className="flex items-center gap-2" title={spec.nickname}>
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={spec.photoURL || undefined} />
+                                <AvatarFallback>{getInitials(spec.nickname)}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate hidden sm:inline">{spec.nickname}</span>
+                        </div>
+                    )) : <p className="text-sm text-muted-foreground">No spectators yet.</p>}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center gap-2"><History /> Draft Log</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-24 w-full">
+                        <div className="space-y-2 text-sm">
+                            {state.log.length > 0 ? state.log.map((log, i) => <p key={i}>{log}</p>) : <p className="text-sm text-muted-foreground">Draft has not started.</p>}
+                        </div>
+                    </ScrollArea>
+                </CardContent>
+             </Card>
         </div>
       </main>
       {roomData.phase === 'REVEAL' && allFinalPicks.length > 0 && (
@@ -426,6 +462,21 @@ export default function RoomPage({ params }: { params: { id: string }}) {
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
+       <AlertDialog open={roomData.phase === 'FINISHED'}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">Draft Finished!</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The draft is complete. This room will close automatically in {roomData.timeLeft ? `${Math.floor(roomData.timeLeft / 60)}m ${roomData.timeLeft % 60}s` : '...'}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Return to Lobby</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+       </AlertDialog>
     </div>
   );
 }
+
+    
