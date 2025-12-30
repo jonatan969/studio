@@ -130,8 +130,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
   }
 }
 
-export default function RoomPage({ params: { id: roomId } }: { params: { id: string }}) {
+export default function RoomPage({ params }: { params: { id: string }}) {
   const router = useRouter();
+  const roomId = params.id;
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -437,5 +438,7 @@ export default function RoomPage({ params: { id: roomId } }: { params: { id: str
     </div>
   );
 }
+
+    
 
     
