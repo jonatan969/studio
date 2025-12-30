@@ -438,7 +438,3 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     </div>
   );
 }
-
-    
-
-    
