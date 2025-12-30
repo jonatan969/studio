@@ -23,6 +23,7 @@ export default function ProfilePage() {
   const firebaseApp = useFirebaseApp();
   
   const [newPhoto, setNewPhoto] = useState<string | null>(null);
+  const [newPhotoFile, setNewPhotoFile] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -38,7 +39,9 @@ export default function ProfilePage() {
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewPhoto(reader.result as string);
+        const result = reader.result as string;
+        setNewPhoto(result); // For immediate preview
+        setNewPhotoFile(result); // To track that a new file is staged
       };
       reader.readAsDataURL(file);
     }
@@ -49,12 +52,9 @@ export default function ProfilePage() {
   }
 
   const handleSave = async () => {
-    if (!user || !newPhoto) return;
-    
-    // Only proceed if the new photo is a data URL (i.e., a new upload)
-    if (!newPhoto.startsWith('data:')) {
-      toast({ title: 'No Changes', description: 'You have not selected a new photo to upload.' });
-      return;
+    if (!user || !newPhotoFile) {
+        toast({ title: 'No Changes', description: 'You have not selected a new photo to upload.' });
+        return;
     }
     
     setIsLoading(true);
@@ -70,21 +70,26 @@ export default function ProfilePage() {
           const oldStorageRef = ref(storage, user.photoURL);
           await deleteObject(oldStorageRef);
         } catch (error: any) {
-          // Log deletion error but don't block the update process
-          // It might fail if rules change or file doesn't exist, which is okay.
           console.warn("Could not delete old profile photo:", error.message);
         }
       }
       
-      await uploadString(newStorageRef, newPhoto, 'data_url');
+      await uploadString(newStorageRef, newPhotoFile, 'data_url');
       const downloadURL = await getDownloadURL(newStorageRef);
 
       // Update Firebase Auth user profile
-      await updateProfile(user, { photoURL: downloadURL });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      }
       
       // Update Firestore user document
-      const userDocRef = doc(firestore, 'users', user.uid);
-      updateDocumentNonBlocking(userDocRef, { photoURL: downloadURL });
+      if (firestore) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        updateDocumentNonBlocking(userDocRef, { photoURL: downloadURL });
+      }
+      
+      setNewPhoto(downloadURL); // Update preview to be the final URL
+      setNewPhotoFile(null); // Clear staged file
 
       toast({
         title: 'Profile Updated',
@@ -108,6 +113,8 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  const auth = useUser();
 
   return (
     <div className="min-h-screen bg-background">

@@ -22,12 +22,13 @@ export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPl
   const teamColor = teamId === 'team1' ? 'border-orange-500' : 'border-purple-500';
   const teamTextColor = teamId === 'team1' ? 'text-orange-500' : 'text-purple-500';
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null) => {
+    if (!name) return '';
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
   }
 
   return (
-    <Card className={cn('flex flex-col h-full transition-all duration-300', isPicking ? teamColor : 'border-transparent', isPicking ? 'shadow-lg shadow-primary/20' : '')}>
+    <Card className={cn('flex flex-col h-full transition-all duration-300 border-2', isPicking ? teamColor : 'border-transparent', isPicking ? 'shadow-lg shadow-primary/20' : '')}>
       <CardHeader>
         <CardTitle className={cn('font-headline text-2xl', teamTextColor)}>{teamName}</CardTitle>
       </CardHeader>
@@ -44,7 +45,7 @@ export function TeamDisplay({ teamName, teamId, players, picks, isPicking, maxPl
                     <AvatarImage src={player.photoURL || undefined} />
                     <AvatarFallback>{getInitials(player.nickname || '')}</AvatarFallback>
                   </Avatar>
-                  <div className="relative h-full w-20 flex-shrink-0 rounded-md overflow-hidden">
+                  <div className="relative h-full w-20 flex-shrink-0 rounded-md overflow-hidden bg-muted">
                     {pick ? (
                       <Image src={pick.image} alt={pick.name} fill className="object-cover" />
                     ) : (

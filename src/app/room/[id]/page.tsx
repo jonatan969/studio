@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, useCallback } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { HexagonGrid } from '@/components/room/hexagon-grid';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -12,15 +12,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { History, Loader2 } from 'lucide-react';
+import { History, Loader2, LogOut, ShieldAlert } from 'lucide-react';
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
-import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { Room, RoomPlayer, DraftPick } from '@/lib/types';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, writeBatch, deleteDoc } from 'firebase/firestore';
+import { JoinRoomDialog } from '@/components/room/join-room-dialog';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
-type DraftPhase = 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED';
+type DraftPhase = 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
 type TeamId = 'team1' | 'team2';
 
 interface DraftState {
@@ -42,7 +45,8 @@ type DraftAction =
   | { type: 'SET_FIRST_PICKER'; team: TeamId, roomData: Room }
   | { type: 'START_DRAFT' }
   | { type: 'ADVANCE_TURN', roomData: Room, draftPicks: DraftPick[] }
-  | { type: 'COMPLETE_REVEAL' };
+  | { type: 'COMPLETE_REVEAL' }
+  | { type: 'CANCEL_DRAFT', reason: string };
   
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -117,6 +121,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
     case 'COMPLETE_REVEAL':
        return { ...state, phase: 'FINISHED', timeLeft: ROOM_CLOSE_TIME, maxTime: ROOM_CLOSE_TIME };
+    
+    case 'CANCEL_DRAFT':
+        return { ...state, phase: 'CANCELED', draftLog: [...state.draftLog, `Draft canceled: ${action.reason}`] };
 
     default:
       return state;
@@ -138,7 +145,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   
   const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') : null, [firestore, roomId]);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
-  
+
   const [state, dispatch] = useReducer(draftReducer, {
     phase: 'PREP',
     turn: 0,
@@ -149,33 +156,77 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     draftLog: [],
     pickOrder: [],
   });
+
+  const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
   
+  const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
+  
+  const handleLeaveRoom = useCallback(async () => {
+    if (!user || !firestore || !userPlayerInfo) return;
+
+    if (roomData?.adminId === user.uid) {
+        // Admin is leaving, delete the entire room
+        toast({ title: "Closing Room", description: "As the admin, you are closing the room for everyone." });
+        if (roomRef) await deleteDoc(roomRef); // This will cascade via backend functions if set up, otherwise manual cleanup needed
+        router.push('/dashboard');
+        return;
+    }
+
+    // Regular player or spectator leaving
+    const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
+    await deleteDoc(playerRef);
+
+    if (userPlayerInfo.team !== 'spectator' && (roomData?.phase !== 'PREP' && roomData?.phase !== 'FINISHED')) {
+        // Player left mid-draft, cancel it
+        if(roomRef) updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
+    } else {
+        if(roomRef) updateDocumentNonBlocking(roomRef, { playerCount: (players?.length || 1) - 1 });
+    }
+    
+    router.push('/dashboard');
+  }, [user, firestore, userPlayerInfo, roomData, roomId, router, roomRef, players?.length]);
+
+  // Admin cleanup effect
+   useEffect(() => {
+    if (user && roomData && roomData.adminId === user.uid) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        // This is not guaranteed to work but it's a good effort
+        if(roomRef) deleteDocumentNonBlocking(roomRef);
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [user, roomData, roomRef]);
+
   // Player joining logic
   useEffect(() => {
     if (isUserLoading || arePlayersLoading || !user || !firestore || !roomData) return;
     
-    const isPlayerInRoom = players?.some(p => p.uid === user.uid);
-    if (!isPlayerInRoom) {
-        const team1Players = players?.filter(p => p.team === 'team1').length || 0;
-        const team2Players = players?.filter(p => p.team === 'team2').length || 0;
-
-        let joinTeam: 'team1' | 'team2' | 'spectator' = 'spectator';
-        if (team1Players < roomData.playersPerTeam) joinTeam = 'team1';
-        else if (team2Players < roomData.playersPerTeam) joinTeam = 'team2';
-        
-        const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
-        const playerData: RoomPlayer = {
-            uid: user.uid,
-            nickname: user.displayName || 'Player',
-            photoURL: user.photoURL || null,
-            team: joinTeam,
-            isReady: false,
-            roomId: roomId,
-        };
-        setDocumentNonBlocking(playerRef, playerData, {});
-        updateDocumentNonBlocking(doc(firestore, 'rooms', roomId), { playerCount: (players?.length || 0) + 1 });
+    if (!userPlayerInfo) {
+        // User is not in the room, show join dialog
+        setJoinDialogOpen(true);
     }
-  }, [user, isUserLoading, arePlayersLoading, players, roomId, firestore, roomData]);
+  }, [user, isUserLoading, arePlayersLoading, userPlayerInfo, firestore, roomData]);
+
+  const handleJoin = (team: 'team1' | 'team2' | 'spectator') => {
+    if (!user || !firestore) return;
+    const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
+    const playerData: RoomPlayer = {
+        uid: user.uid,
+        nickname: user.displayName || 'Player',
+        photoURL: user.photoURL || null,
+        team: team,
+        isReady: false,
+    };
+    setDocumentNonBlocking(playerRef, playerData, { merge: true });
+    if (roomRef) updateDocumentNonBlocking(roomRef, { playerCount: (players?.length || 0) + 1 });
+    setJoinDialogOpen(false);
+  };
+
 
   // Game state machine
    useEffect(() => {
@@ -183,6 +234,9 @@ export default function RoomPage({ params }: { params: { id: string }}) {
 
     if (roomData.phase !== state.phase) {
         switch(roomData.phase) {
+            case 'CANCELED':
+                dispatch({ type: 'CANCEL_DRAFT', reason: 'A player has left the match.' });
+                break;
             case 'PREP':
                 const team1Full = (players.filter(p=>p.team === 'team1').length || 0) === roomData.playersPerTeam;
                 const team2Full = (players.filter(p=>p.team === 'team2').length || 0) === roomData.playersPerTeam;
@@ -212,14 +266,13 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     const serverTimeLeft = roomData.timeLeft || 0;
     if(state.timeLeft !== serverTimeLeft) {
         // TODO: This can cause jitter, a more sophisticated time sync is needed for production
-        // For now, simple sync for demo
         dispatch({ type: 'TICK' }); 
     }
 
   }, [roomData, players, draftPicks, user, state.phase, state.turn, roomRef, state.timeLeft]);
 
   const handlePickCharacter = (character: Character) => {
-    if (!user || !roomData || !players || !draftPicks) return;
+    if (!user || !roomData || !players || !draftPicks || !firestore) return;
     
     const currentPlayer = players.find(p => p.uid === user.uid);
     if (!currentPlayer || currentPlayer.team === 'spectator') {
@@ -235,6 +288,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
         return;
     }
 
+    const picksRef = collection(firestore, `rooms/${roomId}/picks`);
     const pickData: DraftPick = {
         ...character,
         pickedBy: user.uid,
@@ -242,7 +296,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
         pickOrder: draftPicks.length + 1,
     };
     
-    addDocumentNonBlocking(picksRef!, pickData);
+    addDocumentNonBlocking(picksRef, pickData);
 
     toast({ title: 'Character Picked!', description: `Your team picked ${character.name}.` });
   };
@@ -253,12 +307,12 @@ export default function RoomPage({ params }: { params: { id: string }}) {
   }
 
   const handleCoinFlipResult = (winner: TeamId) => {
-    if(user?.uid === roomData?.adminId) {
+    if(user?.uid === roomData?.adminId && roomRef) {
         const pickOrder = getPickOrder(roomData!.playersPerTeam).map((p, i) => ({
             ...p,
             team: i % 2 === 0 ? winner : (winner === 'team1' ? 'team2' : 'team1'),
         }));
-        updateDocumentNonBlocking(roomRef!, { phase: 'DRAFTING', firstPicker: winner, currentPicker: pickOrder[0].team, turn: 0, picksPerTurn: pickOrder[0].picks, timeLeft: DRAFT_PICK_TIME });
+        updateDocumentNonBlocking(roomRef, { phase: 'DRAFTING', firstPicker: winner, currentPicker: pickOrder[0].team, turn: 0, picksPerTurn: pickOrder[0].picks, timeLeft: DRAFT_PICK_TIME });
     }
   }
   
@@ -266,13 +320,16 @@ export default function RoomPage({ params }: { params: { id: string }}) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   }
   if (!roomData) {
-      return <div className="flex h-screen items-center justify-center"><p>Room not found.</p></div>;
+      return (
+        <div className="flex h-screen items-center justify-center flex-col gap-4">
+            <p className='text-2xl font-headline'>Room not found or has been closed.</p>
+            <Button onClick={() => router.push('/dashboard')}>Return to Lobby</Button>
+        </div>
+      );
   }
 
-  const userPlayerInfo = players?.find(p => p.uid === user?.uid);
   const team1Players = players?.filter(p => p.team === 'team1') || [];
   const team2Players = players?.filter(p => p.team === 'team2') || [];
-  const spectators = players?.filter(p => p.team === 'spectator') || [];
 
   const team1Picks = draftPicks?.filter(p => p.team === 'team1').map(p => CHARACTERS.find(c => c.id === p.id)!) || [];
   const team2Picks = draftPicks?.filter(p => p.team === 'team2').map(p => CHARACTERS.find(c => c.id === p.id)!) || [];
@@ -286,6 +343,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
       case 'SUPER_ART': return 'Super Art Selection';
       case 'REVEAL': return 'The Reveal';
       case 'FINISHED': return 'Room Closing In';
+      case 'CANCELED': return 'Draft Canceled';
       default: return 'Draft in Progress';
     }
   };
@@ -296,13 +354,18 @@ export default function RoomPage({ params }: { params: { id: string }}) {
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader />
       <main className="flex-grow container py-4 md:py-8 flex flex-col gap-4">
-        <DraftTimer
-          phaseText={getPhaseText()}
-          timeLeft={roomData.timeLeft || 0}
-          maxTime={roomData.maxTime || 1}
-          currentTeamName={roomData.currentPicker ? roomData[roomData.currentPicker === 'team1' ? 'team1Name': 'team2Name'] : null}
-          currentTeamId={roomData.currentPicker || null}
-        />
+        <div className="flex justify-between items-center">
+            <DraftTimer
+            phaseText={getPhaseText()}
+            timeLeft={roomData.timeLeft || 0}
+            maxTime={roomData.maxTime || 1}
+            currentTeamName={roomData.currentPicker ? roomData[roomData.currentPicker === 'team1' ? 'team1Name': 'team2Name'] : null}
+            currentTeamId={roomData.currentPicker || null}
+            />
+            <Button variant="destructive" onClick={handleLeaveRoom}>
+                <LogOut className="mr-2" /> Leave Room
+            </Button>
+        </div>
         <div className="flex-grow grid grid-cols-1 md:grid-cols-[1fr_2.5fr_1fr] gap-4">
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
@@ -348,6 +411,25 @@ export default function RoomPage({ params }: { params: { id: string }}) {
           onComplete={() => dispatch({ type: 'COMPLETE_REVEAL' })}
          />
       )}
+       <JoinRoomDialog 
+         isOpen={isJoinDialogOpen}
+         onJoin={handleJoin}
+         roomData={roomData}
+         players={players || []}
+       />
+       <AlertDialog open={roomData.phase === 'CANCELED'}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Canceled</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The draft has been canceled because a player left the room. You will be returned to the lobby.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Return to Lobby</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+       </AlertDialog>
     </div>
   );
 }

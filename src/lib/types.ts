@@ -11,7 +11,7 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     status: 'waiting' | 'starting' | 'drafting' | 'super_art' | 'reveal' | 'finished';
-    phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED';
+    phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
     playerCount: number;
     firstPicker?: 'team1' | 'team2';
     currentPicker?: 'team1' | 'team2';
@@ -27,7 +27,6 @@ export interface RoomPlayer {
     photoURL: string | null;
     team: 'team1' | 'team2' | 'spectator';
     isReady: boolean;
-    roomId?: string; // Make roomId optional
 }
 
 export interface DraftPick extends Character {
