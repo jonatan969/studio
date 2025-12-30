@@ -107,8 +107,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false; // Disallow listing all users for privacy
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -142,9 +142,9 @@ service cloud.firestore {
        */
       match /roomPlayers/{userId} {
         allow get, list: if isParticipantInRoom(roomId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.roomId == roomId;
-        allow update: if resource != null && isOwner(resource.data.userId) && request.resource.data.userId == resource.data.userId && request.resource.data.roomId == resource.data.roomId;
-        allow delete: if resource != null && (isOwner(resource.data.userId) || isRoomAdmin(roomId));
+        allow create: if isOwner(userId) && request.resource.data.uid == userId && request.resource.data.roomId == roomId;
+        allow update: if resource != null && isOwner(resource.data.uid) && request.resource.data.uid == resource.data.uid && request.resource.data.roomId == resource.data.roomId;
+        allow delete: if resource != null && (isOwner(resource.data.uid) || isRoomAdmin(roomId));
       }
 
       //--------------------------------------------------------------------------------

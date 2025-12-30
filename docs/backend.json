@@ -6,7 +6,7 @@
       "type": "object",
       "description": "Represents a user in the system.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
           "description": "Unique identifier for the user."
         },
@@ -15,9 +15,13 @@
           "description": "Email address of the user.",
           "format": "email"
         },
-        "username": {
+        "nickname": {
           "type": "string",
-          "description": "Username of the user. Must be unique."
+          "description": "Nickname of the user. Must be unique."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri"
         },
         "role": {
           "type": "string",
@@ -25,10 +29,9 @@
         }
       },
       "required": [
-        "id",
+        "uid",
         "email",
-        "username",
-        "role"
+        "nickname"
       ]
     },
     "Room": {
@@ -82,7 +85,7 @@
       "type": "object",
       "description": "Represents a player's presence in a room.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
           "description": "Unique identifier for the room player relationship."
         },
@@ -108,7 +111,7 @@
         }
       },
       "required": [
-        "id",
+        "uid",
         "roomId",
         "userId",
         "team"

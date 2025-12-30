@@ -27,6 +27,7 @@ export interface RoomPlayer {
     photoURL: string | null;
     team: 'team1' | 'team2' | 'spectator';
     isReady: boolean;
+    roomId?: string; // Make roomId optional
 }
 
 export interface DraftPick extends Character {

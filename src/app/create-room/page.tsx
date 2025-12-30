@@ -17,7 +17,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { TEAM_LOGOS } from '@/lib/game-data';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { useUser, useFirestore, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 
 const createRoomSchema = z.object({
@@ -67,7 +67,7 @@ export default function CreateRoomPage() {
   const spectatorLimit = watch('spectatorLimit');
 
   const onSubmit = async (data: CreateRoomForm) => {
-    if (!user) {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to create a room.' });
         return;
     }

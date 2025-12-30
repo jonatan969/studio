@@ -5,16 +5,16 @@ import { VersusLogo } from "../icons/logo";
 import { cn } from "@/lib/utils";
 
 interface CoinFlipProps {
-    onComplete: (winner: 'Orange' | 'Purple') => void;
+    onComplete: (winner: 'team1' | 'team2') => void;
 }
 
 export function CoinFlip({ onComplete }: CoinFlipProps) {
     const [isFlipping, setIsFlipping] = useState(false);
-    const [result, setResult] = useState<'Orange' | 'Purple' | null>(null);
+    const [result, setResult] = useState<'team1' | 'team2' | null>(null);
 
     useEffect(() => {
         setIsFlipping(true);
-        const winner = Math.random() < 0.5 ? 'Orange' : 'Purple';
+        const winner = Math.random() < 0.5 ? 'team1' : 'team2';
         
         const flipTimeout = setTimeout(() => {
             setResult(winner);
@@ -33,8 +33,8 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
 
     const getCoinSideClass = (side: 'front' | 'back') => {
         if (!result) return '';
-        if (result === 'Orange' && side === 'front') return 'animate-coin-result';
-        if (result === 'Purple' && side === 'back') return 'animate-coin-result';
+        if (result === 'team1' && side === 'front') return 'animate-coin-result';
+        if (result === 'team2' && side === 'back') return 'animate-coin-result';
         return 'animate-coin-hide';
     }
 
@@ -84,7 +84,7 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
                 }
             `}</style>
             <div className="coin-container">
-                <div className={cn("coin", result && "transition-transform duration-500", result === 'Orange' && 'rotate-y-0', result === 'Purple' && 'rotate-y-180' )}>
+                <div className={cn("coin", result && "transition-transform duration-500", result === 'team1' && 'rotate-y-0', result === 'team2' && 'rotate-y-180' )}>
                     <div className="coin-face front">
                         <VersusLogo className="w-20 h-20" />
                     </div>
@@ -94,7 +94,7 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
                 </div>
             </div>
             <p className="font-headline text-2xl mt-4">
-                {result ? `Team ${result} picks first!` : 'Flipping coin...'}
+                {result ? `Team ${result === 'team1' ? 'Orange' : 'Purple'} picks first!` : 'Flipping coin...'}
             </p>
         </div>
     );

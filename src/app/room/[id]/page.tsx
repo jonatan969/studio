@@ -170,6 +170,7 @@ export default function RoomPage({ params }: { params: { id: string }}) {
             photoURL: user.photoURL || null,
             team: joinTeam,
             isReady: false,
+            roomId: roomId,
         };
         setDocumentNonBlocking(playerRef, playerData, {});
         updateDocumentNonBlocking(doc(firestore, 'rooms', roomId), { playerCount: (players?.length || 0) + 1 });
