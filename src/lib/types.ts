@@ -14,7 +14,7 @@ export interface Room {
     playerCount: number;
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
-    currentPicker?: 'team1' | 'team2';
+    currentPicker?: 'team1' | 'team2' | null;
     turn?: number;
     picksPerTurn?: number;
     timeLeft?: number;
@@ -33,6 +33,7 @@ export interface DraftPick extends Omit<Character, 'id'> {
     id: string; // The doc ID from firestore
     characterId: string; // The original character ID from game-data
     pickedBy: string; // uid of player
+    nickname: string; // nickname of player who picked
     team: 'team1' | 'team2';
     pickOrder: number;
     superArtId?: string;

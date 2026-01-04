@@ -1,17 +1,17 @@
 'use client';
 
-import { generateDramaticReveal, GenerateDramaticRevealInput } from '@/ai/flows/generate-dramatic-reveal';
+import { generateDramaticReveal } from '@/ai/flows/generate-dramatic-reveal';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
-import { Character, SuperArt } from '@/lib/game-data';
+import { SuperArt } from '@/lib/game-data';
 import { Card, CardContent } from '../ui/card';
 import { SuperArtIcon } from './super-art-icon';
 import { DraftPick } from '@/lib/types';
 import Image from 'next/image';
 
 interface DramaticRevealProps {
-  team1SuperArt: SuperArt;
-  team2SuperArt: SuperArt;
+  team1Name: string;
+  team2Name: string;
   allPicks: (DraftPick & { superArt: SuperArt | null })[];
   onComplete: () => void;
 }
@@ -28,9 +28,9 @@ function TypingEffect({ text, onFinished }: { text: string; onFinished: () => vo
     setDisplayedText('');
     let i = 0;
     const intervalId = setInterval(() => {
-      setDisplayedText(text.substring(0, i + 1));
+      setDisplayedText(prev => prev + text[i]);
       i++;
-      if (i > text.length) {
+      if (i >= text.length) {
         clearInterval(intervalId);
         setTimeout(onFinished, 1000); // Wait a bit after typing finishes
       }
@@ -39,10 +39,10 @@ function TypingEffect({ text, onFinished }: { text: string; onFinished: () => vo
     return () => clearInterval(intervalId);
   }, [text, onFinished]);
 
-  return <p className="text-xl sm:text-2xl md:text-4xl font-headline text-center italic text-slate-300 max-w-4xl">{displayedText}</p>;
+  return <p className="text-xl sm:text-2xl md:text-3xl font-headline text-center italic text-slate-300 max-w-4xl">{displayedText}</p>;
 }
 
-export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onComplete }: DramaticRevealProps) {
+export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: DramaticRevealProps) {
   const [revealText, setRevealText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(true);
@@ -50,12 +50,14 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
 
   useEffect(() => {
     const getReveal = async () => {
+      const team1SuperArt = allPicks.find(p => p.team === 'team1' && p.superArt)?.superArt?.name || "un poder misterioso";
+      const team2SuperArt = allPicks.find(p => p.team === 'team2' && p.superArt)?.superArt?.name || "un poder arcano";
+
       try {
-        const input: GenerateDramaticRevealInput = {
-          team1SuperArt: team1SuperArt.name,
-          team2SuperArt: team2SuperArt.name,
-        };
-        const result = await generateDramaticReveal(input);
+        const result = await generateDramaticReveal({
+          team1SuperArt,
+          team2SuperArt,
+        });
         setRevealText(result.revealText);
       } catch (error) {
         console.error('Failed to generate dramatic reveal:', error);
@@ -66,7 +68,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
     };
 
     getReveal();
-  }, [team1SuperArt, team2SuperArt]);
+  }, [allPicks]);
 
   if (showAll) {
     return (
@@ -75,15 +77,18 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 w-full max-w-6xl">
                 {['team1', 'team2'].map(teamId => (
                     <div key={teamId}>
-                        <h3 className={`text-2xl sm:text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? allPicks.find(p => p.team === 'team1')?.teamName || 'Equipo 1' : allPicks.find(p => p.team === 'team2')?.teamName || 'Equipo 2'}</h3>
+                        <h3 className={`text-2xl sm:text-3xl font-headline mb-4 ${teamId === 'team1' ? 'text-orange-400' : 'text-purple-400'}`}>{teamId === 'team1' ? team1Name : team2Name}</h3>
                         <div className="space-y-3 sm:space-y-4">
                             {allPicks.filter(p => p.team === teamId).map((pick, index) => (
                                 <Card key={index} className="bg-card/80 p-3 sm:p-4 rounded-lg flex justify-between items-center">
                                     <div className='flex items-center gap-3 sm:gap-4'>
-                                        <div className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden'>
+                                        <div className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden flex-shrink-0'>
                                             <Image src={pick.image} alt={pick.name} fill className='object-cover' />
                                         </div>
-                                        <p className="font-bold text-base sm:text-lg">{pick.name}</p>
+                                        <div>
+                                            <p className="font-bold text-base sm:text-lg">{pick.name}</p>
+                                            <p className="text-xs text-muted-foreground">{pick.nickname}</p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {pick.superArt && (
@@ -99,7 +104,7 @@ export function DramaticReveal({ team1SuperArt, team2SuperArt, allPicks, onCompl
                     </div>
                 ))}
             </div>
-            <Button onClick={onComplete} className="mt-8 sm:mt-12">Finalizar</Button>
+            <Button onClick={onComplete} className="mt-8 sm:mt-12">Finalizar y Volver al Lobby</Button>
         </div>
     );
   }

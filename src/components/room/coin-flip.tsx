@@ -6,9 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface CoinFlipProps {
     onComplete: (winner: 'team1' | 'team2') => void;
+    team1Name: string;
+    team2Name: string;
 }
 
-export function CoinFlip({ onComplete }: CoinFlipProps) {
+export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
     const [isFlipping, setIsFlipping] = useState(false);
     const [result, setResult] = useState<'team1' | 'team2' | null>(null);
 
@@ -31,22 +33,15 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
         };
     }, [onComplete]);
 
-    const getCoinSideClass = (side: 'front' | 'back') => {
-        if (!result) return '';
-        if (result === 'team1' && side === 'front') return 'animate-coin-result';
-        if (result === 'team2' && side === 'back') return 'animate-coin-result';
-        return 'animate-coin-hide';
-    }
-
     return (
-        <div className="flex flex-col items-center justify-center h-full gap-4">
+        <div className="flex flex-col items-center justify-center h-full gap-4 p-4 animate-in fade-in-50 duration-500">
             <style jsx>{`
                 .coin-container {
                     perspective: 1000px;
                 }
                 .coin {
-                    width: 150px;
-                    height: 150px;
+                    width: 120px;
+                    height: 120px;
                     position: relative;
                     transform-style: preserve-3d;
                     animation: ${isFlipping ? 'flip 3s ease-out forwards' : 'none'};
@@ -60,14 +55,14 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
-                    border: 4px solid #a855f7; /* primary */
+                    border: 4px solid hsl(var(--primary));
                 }
                 .front {
-                    background-color: #f97316; /* orange-500 */
+                    background-color: hsl(var(--ring));
                     color: white;
                 }
                 .back {
-                    background-color: #a855f7; /* purple-500 */
+                    background-color: hsl(var(--accent));
                     color: white;
                     transform: rotateY(180deg);
                 }
@@ -75,26 +70,19 @@ export function CoinFlip({ onComplete }: CoinFlipProps) {
                     0% { transform: rotateY(0); }
                     100% { transform: rotateY(1800deg); }
                 }
-                .animate-coin-result {
-                    animation: show-result 1s forwards 0.5s;
-                }
-                 @keyframes show-result {
-                    from { transform: scale(1); }
-                    to { transform: scale(1.2); }
-                }
             `}</style>
             <div className="coin-container">
-                <div className={cn("coin", result && "transition-transform duration-500", result === 'team1' && 'rotate-y-0', result === 'team2' && 'rotate-y-180' )}>
+                <div className={cn("coin", result && "transition-transform duration-500", result === 'team1' ? 'rotate-y-0' : 'rotate-y-180' )}>
                     <div className="coin-face front">
-                        <VersusLogo className="w-20 h-20" />
+                        <VersusLogo className="w-16 h-16" />
                     </div>
                     <div className="coin-face back">
-                        <VersusLogo className="w-20 h-20" />
+                        <VersusLogo className="w-16 h-16" />
                     </div>
                 </div>
             </div>
-            <p className="font-headline text-2xl mt-4">
-                {result ? `¡El equipo ${result === 'team1' ? 'Naranja' : 'Morado'} elige primero!` : 'Lanzando la moneda...'}
+            <p className="font-headline text-xl sm:text-2xl mt-4 text-center">
+                {result ? `¡${result === 'team1' ? team1Name : team2Name} elige primero!` : 'Lanzando la moneda...'}
             </p>
         </div>
     );

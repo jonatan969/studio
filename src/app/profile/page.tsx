@@ -3,23 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, isUserLoading, refreshUser } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   
   const [photoURL, setPhotoURL] = useState('');
+  const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export default function ProfilePage() {
       router.push('/');
     } else if (user) {
       setPhotoURL(user.photoURL || '');
+      setNickname(user.displayName || '');
     }
   }, [user, isUserLoading, router]);
 
@@ -35,12 +39,16 @@ export default function ProfilePage() {
   }
 
   const handleSave = async () => {
-    if (!user || !auth.currentUser) {
+    if (!user || !auth.currentUser || !firestore) {
         toast({ variant: 'destructive', title: 'No Autenticado', description: 'Debes iniciar sesión para actualizar tu perfil.' });
         return;
     }
-    if (photoURL === user.photoURL) {
-        toast({ title: 'Sin Cambios', description: 'La nueva URL de la foto es la misma que la anterior.' });
+    
+    const hasPhotoChanged = photoURL !== user.photoURL;
+    const hasNicknameChanged = nickname !== user.displayName;
+
+    if (!hasPhotoChanged && !hasNicknameChanged) {
+        toast({ title: 'Sin Cambios', description: 'No has modificado ningún dato.' });
         return;
     }
     
@@ -48,20 +56,30 @@ export default function ProfilePage() {
 
     try {
       // Update Firebase Auth user profile
-      await updateProfile(auth.currentUser, { photoURL: photoURL });
+      await updateProfile(auth.currentUser, { 
+          photoURL: photoURL,
+          displayName: nickname,
+      });
+
+      // Update the nickname in the user's Firestore document
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDocumentNonBlocking(userDocRef, {
+          nickname: nickname,
+          photoURL: photoURL,
+      });
       
-      // Manually trigger a refresh of the user object to get the latest photoURL
+      // Manually trigger a refresh of the user object to get the latest data
       await refreshUser();
       
       toast({
         title: 'Perfil Actualizado',
-        description: 'Tu foto de perfil ha sido guardada.',
+        description: 'Tus datos han sido guardados.',
       });
     } catch(error: any) {
         toast({
             variant: 'destructive',
             title: 'Actualización Fallida',
-            description: error.message || 'No se pudo actualizar tu foto de perfil.',
+            description: error.message || 'No se pudo actualizar tu perfil.',
         });
     } finally {
         setIsLoading(false);
@@ -70,8 +88,11 @@ export default function ProfilePage() {
 
   if (isUserLoading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+      <div className="flex min-h-screen w-full flex-col">
+        <PageHeader/>
+        <main className="flex flex-1 items-center justify-center">
+            <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        </main>
       </div>
     );
   }
@@ -79,19 +100,19 @@ export default function ProfilePage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <PageHeader />
-      <main className="flex-1 container py-8">
+      <main className="flex-1 container py-4 sm:py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle className="font-headline text-3xl">Tu Perfil</CardTitle>
+            <CardTitle className="font-headline text-2xl sm:text-3xl">Tu Perfil</CardTitle>
             <CardDescription>Ve y edita la información de tu perfil.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={photoURL || undefined} alt={user.displayName || ''} />
-                <AvatarFallback className="text-3xl">{getInitials(user.displayName || '')}</AvatarFallback>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
+                <AvatarImage src={photoURL || undefined} alt={nickname || ''} />
+                <AvatarFallback className="text-3xl">{getInitials(nickname || '')}</AvatarFallback>
               </Avatar>
-              <div className="grid w-full max-w-sm items-center gap-1.5">
+              <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="picture-url">URL de Foto de Perfil</Label>
                 <Input 
                   id="picture-url" 
@@ -104,17 +125,24 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Apodo</Label>
-              <Input value={user.displayName || ''} disabled />
+              <Label htmlFor="nickname">Apodo (Nickname)</Label>
+              <Input 
+                id="nickname"
+                value={nickname || ''} 
+                onChange={(e) => setNickname(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
               <Input value={user.email || ''} disabled />
             </div>
-            <Button onClick={handleSave} disabled={isLoading || photoURL === user.photoURL}>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleSave} disabled={isLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Guardar Cambios'}
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </main>
     </div>
