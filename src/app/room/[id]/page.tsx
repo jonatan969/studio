@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from '@/components/page-header';
@@ -576,3 +577,5 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
+    
