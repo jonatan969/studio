@@ -56,7 +56,8 @@ export interface RoomPlayer {
 }
 
 export interface DraftPick {
-    id: string; // This is the character ID
+    id: string; // The doc ID from firestore
+    characterId: string; // The original character ID from game-data
     name: string;
     role: string;
     image: string;
@@ -68,3 +69,6 @@ export interface DraftPick {
     pickOrder: number;
     superArtId?: string;
 }
+
+
+    

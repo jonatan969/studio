@@ -206,12 +206,13 @@ export default function RoomPage() {
       if ((roomData.phase === 'FINISHED' || roomData.phase === 'CANCELED') && roomData.adminId === user.uid) {
         const cleanupDelay = roomData.phase === 'FINISHED' ? ROOM_CLOSE_TIME * 1000 : 15000;
         const cleanupTimer = setTimeout(() => {
+            const currentRoomRef = doc(firestore, 'rooms', roomId);
             // Delete subcollections first
             const playersPromise = deleteSubcollection(`rooms/${roomId}/players`);
             const picksPromise = deleteSubcollection(`rooms/${roomId}/picks`);
             
             Promise.all([playersPromise, picksPromise]).then(() => {
-                if (roomRef) deleteDoc(roomRef);
+                if (currentRoomRef) deleteDoc(currentRoomRef);
                 router.push('/dashboard');
             }).catch(err => console.error("Error during room cleanup:", err));
 
@@ -451,7 +452,7 @@ export default function RoomPage() {
                 />
             )}
             {roomData?.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && allFinalPicks && roomData && (
-                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={SUPER_ARTS} />
+                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} />
             )}
              {roomData?.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
@@ -549,3 +550,6 @@ export default function RoomPage() {
     </div>
   );
 }
+
+    
+    
