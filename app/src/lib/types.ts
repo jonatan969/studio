@@ -1,0 +1,70 @@
+
+
+export interface User {
+    uid: string;
+    email: string;
+    nickname: string;
+    photoURL: string | null;
+    role?: 'admin' | 'user';
+}
+
+export interface Character {
+    id: string;
+    name: string;
+    role: string;
+    image: string;
+    hint?: string;
+    description?: string;
+}
+
+export interface SuperArt {
+  id: string;
+  characterId: string; // Link back to the character
+  name: string;
+  description: string;
+  color: 'red' | 'yellow' | 'blue';
+  roman: string;
+}
+
+export interface Room {
+    id: string;
+    name: string;
+    adminId: string;
+    team1Name: string;
+    team2Name: string;
+    team1Logo: string;
+    team2Logo: string;
+    playersPerTeam: number;
+    spectatorLimit: number;
+    phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
+    playerCount: number;
+    firstPicker?: 'team1' | 'team2';
+    pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
+    currentPicker?: 'team1' | 'team2' | null;
+    turn?: number;
+    picksPerTurn?: number;
+    timeLeft?: number;
+    maxTime?: number;
+}
+
+export interface RoomPlayer {
+    uid: string;
+    nickname: string;
+    photoURL: string | null;
+    team: 'team1' | 'team2' | 'spectator';
+    isReady: boolean;
+}
+
+export interface DraftPick {
+    id: string; // This is the character ID
+    name: string;
+    role: string;
+    image: string;
+    hint?: string;
+    description?: string;
+    pickedBy: string; // uid of player
+    nickname: string; // nickname of player who picked
+    team: 'team1' | 'team2';
+    pickOrder: number;
+    superArtId?: string;
+}
