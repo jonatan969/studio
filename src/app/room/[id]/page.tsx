@@ -43,9 +43,9 @@ function draftReducer(state: DraftState, action: {type: 'LOG', message: string})
   }
 }
 
-export default function RoomPage({ params }: { params: { id: string }}) {
+export default function RoomPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const roomId = use(Promise.resolve(params)).id;
+  const roomId = use(Promise.resolve(params.id));
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
