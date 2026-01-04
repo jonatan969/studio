@@ -25,6 +25,18 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    match /characters/{characterId} {
+      allow read: if isSignedIn();
+      // Solo un administrador podría escribir/actualizar personajes en el futuro
+      // allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 2;
+    }
+
+    match /super_arts/{superArtId} {
+      allow read: if isSignedIn();
+      // Solo un administrador podría escribir/actualizar super arts en el futuro
+      // allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == 2;
+    }
+
     match /rooms/{roomId} {
       allow read: if true;
       allow create: if isSignedIn() && request.resource.data.adminId == request.auth.uid;
