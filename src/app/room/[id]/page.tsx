@@ -2,7 +2,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
-import { useEffect, useReducer, useState, useCallback, useMemo, use } from 'react';
+import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -45,7 +45,7 @@ function draftReducer(state: DraftState, action: {type: 'LOG', message: string})
 
 export default function RoomPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const roomId = use(Promise.resolve(params.id));
+  const roomId = params.id;
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -131,7 +131,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   }, [isRoomLoading, arePlayersLoading, user, userPlayerInfo, roomData]);
 
   const handleJoin = (team: 'team1' | 'team2' | 'spectator') => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !roomData) return;
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     const playerData: RoomPlayer = {
         uid: user.uid,
@@ -142,15 +142,15 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     };
     setDocumentNonBlocking(playerRef, playerData, {});
     setJoinDialogOpen(false);
-    toast({title: `Te uniste como ${team}`});
+    toast({title: `Te uniste como ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
   };
 
   const handleSwitchTeam = (team: 'team1' | 'team2' | 'spectator') => {
-    if (!user || !firestore || !userPlayerInfo) return;
+    if (!user || !firestore || !userPlayerInfo || !roomData) return;
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     updateDocumentNonBlocking(playerRef, { team });
     setSwitchTeamDialogOpen(false);
-    toast({title: `Te cambiaste a ${team}`});
+    toast({title: `Te cambiaste a ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
   };
 
   // Main Game State Machine (driven by admin)
@@ -194,21 +194,23 @@ export default function RoomPage({ params }: { params: { id: string } }) {
                     break;
                 case 'DRAFTING':
                     // Auto-pick logic
+                    if (!roomData.currentPicker || !draftPicks) break;
                     const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
-                    const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks?.some(dp => dp.pickedBy === p.uid));
-                    const pickedCharacterIds = draftPicks?.map(p => p.characterId) || [];
+                    const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
+                    const pickedCharacterIds = draftPicks.map(p => p.characterId) || [];
                     const availableCharacters = CHARACTERS.filter(c => !pickedCharacterIds.includes(c.id));
                     
-                    if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && roomData.currentPicker) {
+                    if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && firestore) {
                         const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
                         const randomCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
-                        const newPickRef = doc(collection(firestore!, `rooms/${roomId}/picks`));
+                        const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
                         const pickData: Omit<DraftPick, 'id'> = {
                             ...randomCharacter,
                             characterId: randomCharacter.id,
                             pickedBy: randomPlayer.uid,
+                            nickname: randomPlayer.nickname,
                             team: roomData.currentPicker,
-                            pickOrder: (draftPicks?.length || 0) + 1,
+                            pickOrder: (draftPicks.length || 0) + 1,
                         };
                         setDocumentNonBlocking(newPickRef, pickData, {});
                         dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${randomPlayer.nickname}.`});
@@ -238,7 +240,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
   // Client-side turn advancement logic
   useEffect(() => {
-    if(!firestore || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData?.adminId) return;
+    if(!firestore || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData?.adminId) return;
 
     const totalPicksMade = draftPicks.length;
     if (roomData.turn === undefined) return;
@@ -256,7 +258,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
          const newTurn = roomData.turn + 1;
 
          if (newTurn >= roomData.pickOrder.length) {
-              updateDocumentNonBlocking(roomRef!, {
+              updateDocumentNonBlocking(roomRef, {
                   phase: 'SUPER_ART',
                   timeLeft: SUPER_ART_PICK_TIME,
                   maxTime: SUPER_ART_PICK_TIME,
@@ -267,7 +269,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
               dispatch({type: 'LOG', message: '¡Todos los personajes seleccionados! Hora de elegir los Super Arts.'});
          } else {
              const nextTurnInfo = roomData.pickOrder[newTurn];
-             updateDocumentNonBlocking(roomRef!, {
+             updateDocumentNonBlocking(roomRef, {
                  turn: newTurn,
                  currentPicker: nextTurnInfo.team,
                  picksPerTurn: nextTurnInfo.picks,
@@ -315,6 +317,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         ...character,
         characterId: character.id,
         pickedBy: user.uid,
+        nickname: userPlayerInfo.nickname,
         team: userPlayerInfo.team,
         pickOrder: draftPicks.length + 1,
     };
@@ -392,6 +395,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const bannedCharacterIds = draftPicks?.map(p => p.characterId) || [];
   
   const getPhaseText = () => {
+    if (!roomData) return '';
     switch (roomData.phase) {
       case 'PREP': return `Esperando jugadores...`;
       case 'COIN_FLIP': return `El draft comienza en...`;
@@ -572,3 +576,5 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
+    
