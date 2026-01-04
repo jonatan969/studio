@@ -91,46 +91,38 @@
       "description": "Represents a character selection during the draft.",
       "properties": {
         "id": { "type": "string" },
+        "characterId": { "type": "string" },
         "name": { "type": "string" },
         "role": { "type": "string" },
         "image": { "type": "string" },
         "hint": { "type": "string" },
         "description": { "type": "string" },
         "pickedBy": { "type": "string" },
+        "nickname": { "type": "string"},
         "team": { "type": "string" },
         "pickOrder": { "type": "number" },
         "superArtId": { "type": "string" }
       },
-      "required": ["id", "name", "pickedBy", "team", "pickOrder"]
+      "required": ["id", "characterId", "pickedBy", "team", "pickOrder"]
     }
   },
   "auth": { "providers": ["password"] },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": { "entityName": "User", "schema": { "$ref": "#/entities/User" }, "description": "Stores user profiles. Each document contains user-specific information." }
-      },
-      {
-        "path": "/characters/{characterId}",
-        "definition": { "entityName": "Character", "schema": { "$ref": "#/entities/Character" }, "description": "Stores all playable characters available for the draft." }
-      },
-      {
-        "path": "/super_arts/{superArtId}",
-        "definition": { "entityName": "SuperArt", "schema": { "$ref": "#/entities/SuperArt" }, "description": "Stores all Super Art abilities available in the game." }
-      },
-      {
-        "path": "/rooms/{roomId}",
-        "definition": { "entityName": "Room", "schema": { "$ref": "#/entities/Room" }, "description": "Stores room data, including settings and real-time state." }
-      },
-      {
-        "path": "/rooms/{roomId}/players/{userId}",
-        "definition": { "entityName": "RoomPlayer", "schema": { "$ref": "#/entities/RoomPlayer" }, "description": "Stores participants (players and spectators) for each room." }
-      },
-      {
-        "path": "/rooms/{roomId}/picks/{characterId}",
-        "definition": { "entityName": "DraftPick", "schema": { "$ref": "#/entities/DraftPick" }, "description": "Stores character picks made during the draft for a room." }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles. Each document contains user-specific information."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Stores room data, including settings and real-time state."
+    },
+    "/rooms/{roomId}/players/{userId}": {
+      "schema": { "$ref": "#/entities/RoomPlayer" },
+      "description": "Stores participants (players and spectators) for each room."
+    },
+    "/rooms/{roomId}/picks/{pickId}": {
+      "schema": { "$ref": "#/entities/DraftPick" },
+      "description": "Stores character picks made during the draft for a room."
+    }
   }
 }
