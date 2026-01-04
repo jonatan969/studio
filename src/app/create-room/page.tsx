@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
 
 const createRoomSchema = z.object({
@@ -77,7 +77,8 @@ export default function CreateRoomPage() {
     setIsLoading(true);
     
     try {
-        const newRoomRef = doc(collection(firestore, 'rooms'));
+        const roomsCollection = collection(firestore, 'rooms');
+        const newRoomRef = doc(roomsCollection);
         const newRoomId = newRoomRef.id;
 
         const player: RoomPlayer = {
@@ -88,8 +89,7 @@ export default function CreateRoomPage() {
             isReady: false,
         };
 
-        const roomData: Room = {
-            id: newRoomId,
+        const roomData: Omit<Room, 'id'> = {
             name: data.roomName,
             adminId: user.uid,
             team1Name: data.team1Name,
@@ -99,11 +99,15 @@ export default function CreateRoomPage() {
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
             phase: 'PREP',
-            players: [player],
             picks: [],
         };
         
-        await setDocumentNonBlocking(newRoomRef, roomData, {});
+        const playerDocRef = doc(firestore, 'rooms', newRoomId, 'players', user.uid);
+        
+        const batch = writeBatch(firestore);
+        batch.set(newRoomRef, roomData);
+        batch.set(playerDocRef, player);
+        await batch.commit();
 
         toast({
           title: '¡Sala Creada!',

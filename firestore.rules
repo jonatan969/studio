@@ -1,19 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
     // Allow users to manage their own profile
     match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth.uid == userId;
     }
     
-    // Any authenticated user can read the list of rooms for the lobby
-    // and can create new rooms.
+    // Allow any authenticated user to read/create rooms.
     // Only the admin can update or delete the main room document.
     match /rooms/{roomId} {
       allow read, create: if request.auth != null;
       allow update, delete: if resource.data.adminId == request.auth.uid;
+    }
+
+    // Allow players to join/leave rooms and update their own status
+    match /rooms/{roomId}/players/{userId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth.uid == userId;
     }
   }
 }

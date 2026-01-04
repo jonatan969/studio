@@ -1,4 +1,5 @@
 
+
 export interface User {
     uid: string;
     email: string;
@@ -59,7 +60,6 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
-    players: RoomPlayer[];
     picks: DraftPick[];
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
