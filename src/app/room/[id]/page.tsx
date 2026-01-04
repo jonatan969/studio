@@ -14,7 +14,7 @@ import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-rea
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { Room, RoomPlayer, DraftPick, Character, SuperArt, GameData } from '@/lib/types';
+import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
 import { doc, deleteDoc, writeBatch, collection, CollectionReference, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { deleteSubcollection } from '@/lib/utils';
 import { CharacterGrid } from '@/components/room/character-grid';
+import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
 
 
 type TeamId = 'team1' | 'team2';
@@ -64,15 +65,12 @@ export default function RoomPage() {
   const playersRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'players') as CollectionReference<RoomPlayer> : null, [firestore, roomId]);
   const { data: players, isLoading: arePlayersLoading } = useCollection<RoomPlayer>(playersRef);
   
-  const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
-  const { data: gameData, isLoading: isGameDataLoading } = useDoc<GameData>(gameDataRef);
-
-  const characters = gameData?.characters || [];
-  const superArts = gameData?.super_arts || [];
+  const characters = CHARACTERS;
+  const superArts = SUPER_ARTS;
 
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || isGameDataLoading;
+  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading;
 
   const cleanupRoom = useCallback(async () => {
     if (!firestore || !roomId || !roomRef) return;
@@ -87,8 +85,7 @@ export default function RoomPage() {
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !roomData || !firestore) return;
 
-    // Admin leaving cancels the room
-    if (user.uid === roomData.adminId && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
+    if (players && players.length === 1 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
         await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
     } else {
         const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
@@ -96,7 +93,7 @@ export default function RoomPage() {
     }
     
     router.push('/dashboard');
-  }, [user, roomData, firestore, router, roomId, roomRef]);
+  }, [user, roomData, firestore, router, roomId, roomRef, players]);
 
   // Main timer effect driven by turnEndsAt
   React.useEffect(() => {
@@ -131,7 +128,7 @@ export default function RoomPage() {
         isReady: false,
     };
     const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
-    setDocumentNonBlocking(playerDocRef, newPlayer);
+    setDocumentNonBlocking(playerDocRef, newPlayer, { merge: true });
     setJoinDialogOpen(false);
     toast({title: `Te uniste como ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
   };
@@ -172,49 +169,51 @@ export default function RoomPage() {
                   // Handled by coin flip component completion
                   break;
               case 'DRAFTING':
-                  if (!roomData.pickOrder || roomData.turn === undefined || !roomData.picks || !roomData.currentPicker) break;
-
-                  const picksThisTurn = roomData.pickOrder[roomData.turn].picks;
+                  if (roomData.turn === undefined || !roomData.pickOrder || !roomData.currentPicker || !roomData.picks || !firestore) break;
+                  
+                  const picksExpectedThisTurn = roomData.pickOrder[roomData.turn].picks;
                   const picksMadeThisTurn = roomData.picks.filter(p => p.turn === roomData.turn).length;
-                  const picksToAutoSelect = picksThisTurn - picksMadeThisTurn;
+                  const picksToAutoSelect = picksExpectedThisTurn - picksMadeThisTurn;
 
                   if(picksToAutoSelect <= 0) break;
                   
                   const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                   const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !roomData.picks.some(pick => pick.pickedBy === p.uid));
                   
-                  if(playersOnTeamWhoHaventPicked.length > 0 && firestore) {
-                    const pickedCharacterIds = roomData.picks.map(p => p.characterId);
-                    const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
-                    const newPicks: DraftPick[] = [];
-                    
-                    for(let i = 0; i < picksToAutoSelect; i++) {
-                      const playerToPick = playersOnTeamWhoHaventPicked[i];
-                      // Note: preselection auto-pick is handled client-side. This is the final fallback.
-                      const randomCharacter = availableCharacters[i];
+                  if (playersOnTeamWhoHaventPicked.length > 0) {
+                      const pickedCharacterIds = roomData.picks.map(p => p.characterId);
+                      const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
+                      const newPicks: DraftPick[] = [];
+                      
+                      for (let i = 0; i < picksToAutoSelect; i++) {
+                          const playerToPick = playersOnTeamWhoHaventPicked[i];
+                          if (!playerToPick) continue;
 
-                      if (!playerToPick || !randomCharacter) continue;
+                          // This part is client-side, so we just generate the update. The logic for preselection is handled on the picking client.
+                          // Here we just pick a random available one as a fallback.
+                          const randomCharacter = availableCharacters[i % availableCharacters.length];
+                          if (!randomCharacter) continue;
 
-                      const pickData: DraftPick = {
-                          turn: roomData.turn,
-                          characterId: randomCharacter.id,
-                          name: randomCharacter.name,
-                          role: randomCharacter.role,
-                          image: randomCharacter.image,
-                          hint: randomCharacter.hint,
-                          description: randomCharacter.description,
-                          pickedBy: playerToPick.uid,
-                          nickname: playerToPick.nickname,
-                          team: roomData.currentPicker,
-                          pickOrder: roomData.picks.length + i + 1,
-                      };
-                      newPicks.push(pickData);
-                      dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`});
-                    }
+                           const pickData: DraftPick = {
+                                turn: roomData.turn,
+                                characterId: randomCharacter.id,
+                                name: randomCharacter.name,
+                                role: randomCharacter.role,
+                                image: randomCharacter.image,
+                                hint: randomCharacter.hint,
+                                description: randomCharacter.description,
+                                pickedBy: playerToPick.uid,
+                                nickname: playerToPick.nickname,
+                                team: roomData.currentPicker,
+                                pickOrder: roomData.picks.length + newPicks.length + 1,
+                           };
+                           newPicks.push(pickData);
+                           dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`});
+                      }
 
-                    if (newPicks.length > 0) {
-                      updateDocumentNonBlocking(roomRef, { picks: arrayUnion(...newPicks) });
-                    }
+                      if (newPicks.length > 0) {
+                          updateDocumentNonBlocking(roomRef, { picks: arrayUnion(...newPicks) });
+                      }
                   }
                   break;
               case 'SUPER_ART':
@@ -284,11 +283,6 @@ export default function RoomPage() {
         return;
     }
     
-    if (roomData.turn === undefined) {
-        toast({ variant: 'destructive', title: "El draft no ha comenzado.", description: "El número de turno no está definido." });
-        return;
-    }
-
     const pickData: DraftPick = {
         turn: roomData.turn,
         characterId: character.id,
@@ -452,7 +446,7 @@ export default function RoomPage() {
                     preselectedCharacter={preselectedCharacter}
                     onPreselect={setPreselectedCharacter}
                     onConfirmPick={handlePickCharacter}
-                    canPick={canPick}
+                    canPick={!!canPick}
                 />
             )}
              {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && superArts && myPick && (
@@ -537,7 +531,7 @@ export default function RoomPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Cancelado</AlertDialogTitle>
                     <AlertDialogDescription>
-                        El draft ha sido cancelado porque la sala se quedó vacía o el admin la cerró. Serás devuelto al lobby.
+                        El draft ha sido cancelado porque la sala se quedó vacía. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

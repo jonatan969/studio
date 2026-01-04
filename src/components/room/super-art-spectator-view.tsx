@@ -21,7 +21,7 @@ export function SuperArtSpectatorView({ allPicks, team1Name, team2Name }: SuperA
             return {
                 ...pick,
                 name: character?.name || 'Unknown',
-                superArt,
+                superArt: superArt || null,
             };
         });
     };
@@ -33,16 +33,16 @@ export function SuperArtSpectatorView({ allPicks, team1Name, team2Name }: SuperA
         <Card className="w-full h-full flex flex-col items-center justify-center p-4">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl">Selecciones de Super Art</CardTitle>
-                <CardDescription>Las selecciones se revelan a medida que los jugadores las confirman.</CardDescription>
+                <CardDescription>Los jugadores están eligiendo sus habilidades. Las selecciones se revelarán al final.</CardDescription>
             </CardHeader>
             <CardContent className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <h3 className="font-bold text-lg text-orange-400 mb-2">{team1Name}</h3>
                     <div className="space-y-2">
                         {team1Picks.map((pick) => (
-                            <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
+                            <div key={pick.id || pick.characterId} className="flex items-center justify-between bg-secondary p-2 rounded-md">
                                 <span className="font-semibold">{pick.name}</span>
-                                {pick.superArt ? <SuperArtIcon art={pick.superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
+                                {pick.superArtId ? <span className="text-xs font-bold text-green-400">LISTO</span> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
                             </div>
                         ))}
                     </div>
@@ -51,9 +51,9 @@ export function SuperArtSpectatorView({ allPicks, team1Name, team2Name }: SuperA
                     <h3 className="font-bold text-lg text-purple-400 mb-2">{team2Name}</h3>
                      <div className="space-y-2">
                         {team2Picks.map((pick) => (
-                           <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
+                           <div key={pick.id || pick.characterId} className="flex items-center justify-between bg-secondary p-2 rounded-md">
                                <span className="font-semibold">{pick.name}</span>
-                               {pick.superArt ? <SuperArtIcon art={pick.superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
+                               {pick.superArtId ? <span className="text-xs font-bold text-green-400">LISTO</span> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
                            </div>
                         ))}
                     </div>
