@@ -169,16 +169,16 @@ export default function RoomPage() {
                       if (!roomData.currentPicker || !draftPicks) break;
                       const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                       const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
-                      const pickedCharacterIds = draftPicks.map(p => p.id) || [];
+                      const pickedCharacterIds = draftPicks.map(p => p.characterId) || [];
                       const availableCharacters = CHARACTERS.filter(c => !pickedCharacterIds.includes(c.id));
                       
                       if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && firestore) {
                           const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
                           const randomCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
-                          const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`), randomCharacter.id);
+                          const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
                           
                           const pickData: Omit<DraftPick, 'id'> = {
-                              id: randomCharacter.id,
+                              characterId: randomCharacter.id,
                               name: randomCharacter.name,
                               role: randomCharacter.role,
                               image: randomCharacter.image,
@@ -279,9 +279,9 @@ export default function RoomPage() {
     }
 
 
-    const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`), character.id);
-    const pickData: DraftPick = {
-        id: character.id,
+    const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
+    const pickData: Omit<DraftPick, 'id'> = {
+        characterId: character.id,
         name: character.name,
         role: character.role,
         image: character.image,
@@ -307,10 +307,10 @@ export default function RoomPage() {
     
     // Check if all players have selected their super art
     const playersInDraft = players.filter(p => p.team !== 'spectator');
-    const picksWithSuperArt = draftPicks.filter(p => p.superArtId).length;
+    const allPicksWithSuperArt = draftPicks.filter(p => p.superArtId);
     
     // +1 because our current selection hasn't updated in the collection hook yet
-    if (picksWithSuperArt + 1 >= playersInDraft.length) {
+    if (allPicksWithSuperArt.length + 1 >= playersInDraft.length) {
         updateDocumentNonBlocking(roomRef, { phase: 'REVEAL' });
         dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
     }
@@ -369,7 +369,7 @@ export default function RoomPage() {
 
   const team1Picks = draftPicks?.filter(p => p.team === 'team1') || [];
   const team2Picks = draftPicks?.filter(p => p.team === 'team2') || [];
-  const pickedCharacterIds = draftPicks?.map(p => p.id) || [];
+  const pickedCharacterIds = draftPicks?.map(p => p.characterId) || [];
   
   const getPhaseText = () => {
     if (!roomData) return '';
@@ -445,13 +445,13 @@ export default function RoomPage() {
             )}
              {roomData?.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && SUPER_ARTS && myPick && (
                 <SuperArtSelector 
-                  superArts={SUPER_ARTS.filter(sa => sa.characterId === myPick.id)} 
+                  superArts={SUPER_ARTS.filter(sa => sa.characterId === myPick.characterId)} 
                   onSelect={handleSelectSuperArt} 
                   isSubmitting={isMySuperArtSubmitted} 
                 />
             )}
             {roomData?.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && allFinalPicks && roomData && (
-                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} />
+                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={SUPER_ARTS} />
             )}
              {roomData?.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
