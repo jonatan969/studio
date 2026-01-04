@@ -99,7 +99,6 @@ export default function CreateRoomPage() {
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
             phase: 'PREP',
-            picks: [],
         };
         
         const playerDocRef = doc(firestore, 'rooms', newRoomId, 'players', user.uid);
@@ -242,3 +241,5 @@ export default function CreateRoomPage() {
     </div>
   );
 }
+
+    

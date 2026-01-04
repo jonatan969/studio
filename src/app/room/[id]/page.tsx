@@ -15,7 +15,7 @@ import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
-import { doc, deleteDoc, writeBatch, collection, CollectionReference, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, deleteDoc, writeBatch, collection, CollectionReference, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -65,16 +65,20 @@ export default function RoomPage() {
   const playersRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'players') as CollectionReference<RoomPlayer> : null, [firestore, roomId]);
   const { data: players, isLoading: arePlayersLoading } = useCollection<RoomPlayer>(playersRef);
   
+  const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') as CollectionReference<DraftPick> : null, [firestore, roomId]);
+  const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
+
   const characters = CHARACTERS;
   const superArts = SUPER_ARTS;
 
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading;
+  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || arePicksLoading;
 
   const cleanupRoom = useCallback(async () => {
     if (!firestore || !roomId || !roomRef) return;
     try {
+        await deleteSubcollection(firestore, `rooms/${roomId}/picks`);
         await deleteSubcollection(firestore, `rooms/${roomId}/players`);
         await deleteDoc(roomRef);
     } catch (error) {
@@ -143,7 +147,7 @@ export default function RoomPage() {
 
   // Main Game State Machine (driven by admin)
   React.useEffect(() => {
-      if (allDataLoading || !roomData || !roomRef || !players) return;
+      if (allDataLoading || !roomData || !roomRef || !players || !draftPicks) return;
       if (user?.uid !== roomData?.adminId) return; // Only admin drives state changes
 
       // Rule: If room becomes empty (and not already finished/canceled), cancel it
@@ -169,28 +173,28 @@ export default function RoomPage() {
                   // Handled by coin flip component completion
                   break;
               case 'DRAFTING':
-                  if (roomData.turn === undefined || !roomData.pickOrder || !roomData.currentPicker || !roomData.picks || !firestore) break;
+                  if (roomData.turn === undefined || !roomData.pickOrder || !roomData.currentPicker || !picksRef || !firestore) break;
                   
                   const picksExpectedThisTurn = roomData.pickOrder[roomData.turn].picks;
-                  const picksMadeThisTurn = roomData.picks.filter(p => p.turn === roomData.turn).length;
+                  const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
                   const picksToAutoSelect = picksExpectedThisTurn - picksMadeThisTurn;
 
                   if(picksToAutoSelect <= 0) break;
                   
                   const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
-                  const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !roomData.picks.some(pick => pick.pickedBy === p.uid));
+                  const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(pick => pick.pickedBy === p.uid));
                   
                   if (playersOnTeamWhoHaventPicked.length > 0) {
-                      const pickedCharacterIds = roomData.picks.map(p => p.characterId);
+                      const pickedCharacterIds = draftPicks.map(p => p.characterId);
                       const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
-                      const newPicks: DraftPick[] = [];
-                      
+                      const batch = writeBatch(firestore);
+
                       for (let i = 0; i < picksToAutoSelect; i++) {
                           const playerToPick = playersOnTeamWhoHaventPicked[i];
                           if (!playerToPick) continue;
 
-                          // This part is client-side, so we just generate the update. The logic for preselection is handled on the picking client.
-                          // Here we just pick a random available one as a fallback.
+                          // The client of the player who needs to pick should handle preselection logic.
+                          // This is a fallback for the admin client. We just pick a random available one.
                           const randomCharacter = availableCharacters[i % availableCharacters.length];
                           if (!randomCharacter) continue;
 
@@ -205,15 +209,13 @@ export default function RoomPage() {
                                 pickedBy: playerToPick.uid,
                                 nickname: playerToPick.nickname,
                                 team: roomData.currentPicker,
-                                pickOrder: roomData.picks.length + newPicks.length + 1,
+                                pickOrder: draftPicks.length + i + 1,
                            };
-                           newPicks.push(pickData);
+                           const newPickRef = doc(picksRef, playerToPick.uid);
+                           batch.set(newPickRef, pickData);
                            dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`});
                       }
-
-                      if (newPicks.length > 0) {
-                          updateDocumentNonBlocking(roomRef, { picks: arrayUnion(...newPicks) });
-                      }
+                      batch.commit().catch(e => console.error("Error auto-picking character:", e));
                   }
                   break;
               case 'SUPER_ART':
@@ -227,13 +229,13 @@ export default function RoomPage() {
           }
       }
 
-  }, [roomData, user, players, roomRef, firestore, router, characters, allDataLoading, cleanupRoom, timeLeft]);
+  }, [roomData, user, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, cleanupRoom, timeLeft, picksRef]);
 
   // Client-side turn advancement logic
   React.useEffect(() => {
-    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !roomData.picks || !roomData.pickOrder || user?.uid !== roomData.adminId || roomData.turn === undefined) return;
+    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData.adminId || roomData.turn === undefined) return;
 
-    const picksMadeThisTurn = roomData.picks.filter(p => p.turn === roomData.turn).length;
+    const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
     const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
     
     if (picksExpectedThisTurn === undefined) return;
@@ -242,7 +244,7 @@ export default function RoomPage() {
          const newTurn = roomData.turn + 1;
          const totalPlayers = roomData.playersPerTeam * 2;
 
-         if (newTurn >= roomData.pickOrder.length || roomData.picks.length >= totalPlayers) {
+         if (newTurn >= roomData.pickOrder.length || draftPicks.length >= totalPlayers) {
               updateDocumentNonBlocking(roomRef, { phase: 'SUPER_ART', turnEndsAt: Date.now() + SUPER_ART_PICK_TIME * 1000, currentPicker: null });
               dispatch({type: 'LOG', message: '¡Todos los personajes seleccionados! Hora de elegir los Super Arts.'});
          } else {
@@ -256,7 +258,7 @@ export default function RoomPage() {
              dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
          }
     }
-  }, [roomData, user, roomRef, allDataLoading]);
+  }, [roomData, user, roomRef, draftPicks, allDataLoading]);
 
     // Client-side auto-pick from preselection
     React.useEffect(() => {
@@ -266,16 +268,16 @@ export default function RoomPage() {
     }, [timeLeft, roomData?.phase, preselectedCharacter]);
 
   const handlePickCharacter = async (character: Character) => {
-    if (allDataLoading || !user || !players || !roomData?.picks || !firestore || !userPlayerInfo || !roomData?.pickOrder || roomData.turn === undefined || !roomRef || !roomData) return;
+    if (allDataLoading || !user || !players || !draftPicks || !firestore || !userPlayerInfo || !roomData?.pickOrder || roomData.turn === undefined || !roomRef || !roomData || !picksRef) return;
     if (userPlayerInfo.team === 'spectator') { toast({ variant: 'destructive', title: 'Los espectadores no pueden elegir.' }); return; }
     if (roomData.phase !== 'DRAFTING' || roomData.currentPicker !== userPlayerInfo.team) { toast({ variant: 'destructive', title: "No es el turno de tu equipo para elegir." }); return; }
     
-    if(roomData.picks.some(p => p.pickedBy === user.uid)) {
+    if(draftPicks.some(p => p.pickedBy === user.uid)) {
         toast({ variant: 'destructive', title: 'Ya has elegido un personaje.' }); 
         return;
     }
     
-    const picksMadeThisTurnByMyTeam = roomData.picks.filter(p => p.turn === roomData.turn).length;
+    const picksMadeThisTurnByMyTeam = draftPicks.filter(p => p.turn === roomData.turn).length;
     const picksAllowedThisTurn = roomData.pickOrder[roomData.turn]?.picks || 0;
     
     if (picksMadeThisTurnByMyTeam >= picksAllowedThisTurn) {
@@ -294,10 +296,11 @@ export default function RoomPage() {
         pickedBy: user.uid,
         nickname: userPlayerInfo.nickname,
         team: userPlayerInfo.team,
-        pickOrder: roomData.picks.length + 1,
+        pickOrder: draftPicks.length + 1,
     };
     
-    await updateDocumentNonBlocking(roomRef, { picks: arrayUnion(pickData) });
+    const newPickRef = doc(picksRef, user.uid);
+    await setDocumentNonBlocking(newPickRef, pickData, { merge: true });
 
     toast({ title: '¡Personaje Elegido!', description: `Elegiste a ${character.name}.` });
     dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} eligió a ${character.name}.`});
@@ -305,19 +308,18 @@ export default function RoomPage() {
   };
   
   const handleSelectSuperArt = async (art: SuperArt) => {
-    if(!firestore || !user || !roomData?.picks || !roomData || !roomRef || !players) return;
-    const myPickIndex = roomData.picks.findIndex(p => p.pickedBy === user.uid);
-    if (myPickIndex === -1) { toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje."}); return; }
+    if(!firestore || !user || !draftPicks || !roomData || !roomRef || !players) return;
+    
+    const myPick = draftPicks.find(p => p.pickedBy === user.uid);
+    if (!myPick) { toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje."}); return; }
 
-    const updatedPicks = [...roomData.picks];
-    updatedPicks[myPickIndex].superArtId = art.id;
-
-    await updateDocumentNonBlocking(roomRef, { picks: updatedPicks });
+    const myPickRef = doc(firestore, 'rooms', roomId, 'picks', user.uid);
+    await updateDocumentNonBlocking(myPickRef, { superArtId: art.id });
     
     toast({title: '¡Super Art Confirmado!'});
     
     const playersWithPicks = players.filter(p => p.team !== 'spectator');
-    const allPlayersPickedSuperArt = updatedPicks.filter(p => p.superArtId).length >= playersWithPicks.length;
+    const allPlayersPickedSuperArt = draftPicks.filter(p => p.superArtId).length + 1 >= playersWithPicks.length;
 
     if (allPlayersPickedSuperArt && user.uid === roomData.adminId) { 
         updateDocumentNonBlocking(roomRef, { phase: 'REVEAL', turnEndsAt: null });
@@ -341,7 +343,7 @@ export default function RoomPage() {
     }
   }
   
-  if (allDataLoading || !players) {
+  if (allDataLoading || !players || !draftPicks) {
     return (
       <div className="flex min-h-screen w-full flex-col">
         <PageHeader />
@@ -365,7 +367,6 @@ export default function RoomPage() {
   const team2Players = players?.filter(p => p.team === 'team2') || [];
   const spectators = players?.filter(p => p.team === 'spectator') || [];
 
-  const draftPicks = roomData.picks || [];
   const team1Picks = draftPicks.filter(p => p.team === 'team1') || [];
   const team2Picks = draftPicks.filter(p => p.team === 'team2') || [];
   const bannedCharacterIds = draftPicks.map(p => p.characterId) || [];
@@ -409,7 +410,7 @@ export default function RoomPage() {
   const canPick = userPlayerInfo && userPlayerInfo.team !== 'spectator' &&
                   roomData.phase === 'DRAFTING' && roomData.currentPicker === userPlayerInfo.team &&
                   !draftPicks.some(p => p.pickedBy === user.uid) &&
-                  (roomData.picks?.filter(p => p.turn === roomData.turn).length || 0) < (roomData.pickOrder?.[roomData.turn || 0]?.picks || 0);
+                  (draftPicks.filter(p => p.turn === roomData.turn).length || 0) < (roomData.pickOrder?.[roomData.turn || 0]?.picks || 0);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -555,3 +556,5 @@ export default function RoomPage() {
     </div>
   );
 }
+
+    

@@ -1,7 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // GAME DATA: Allow any authenticated user to read. Only admins can write.
+    
+    // GAME DATA: Allow any authenticated user to read, but only admins can write.
     match /game_data/{docId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
@@ -15,19 +16,31 @@ service cloud.firestore {
 
     // ROOMS:
     match /rooms/{roomId} {
-      // Any authenticated user can read the main room document and create new rooms.
+      // Allow any authenticated user to read room data or create new rooms.
       allow read, create: if request.auth != null;
       
-      // Only the original admin of the room can update or delete the main room document.
-      allow update, delete: if request.auth != null && resource.data.adminId == request.auth.uid;
+      // Only the room's admin can update the main room document (for state changes).
+      allow update: if request.auth != null && resource.data.adminId == request.auth.uid;
+
+      // Only the room's admin can delete a room.
+      allow delete: if request.auth != null && resource.data.adminId == request.auth.uid;
       
       // PLAYERS SUBCOLLECTION:
-      // Allow any authenticated user to read the list of players.
-      // Allow a user to create, update, or delete their OWN player document within a room.
+      // A user can join (create), leave (delete), or update their own status. Anyone can read.
       match /players/{userId} {
         allow read: if request.auth != null;
         allow write: if request.auth.uid == userId;
       }
+      
+      // PICKS SUBCOLLECTION:
+      // A user can create their own pick document (using their UID).
+      // They can only update their own document (e.g., to add a super art).
+      match /picks/{userId} {
+         allow read: if request.auth != null;
+         allow create, update: if request.auth.uid == userId;
+      }
     }
   }
 }
+
+    

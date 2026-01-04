@@ -1,5 +1,6 @@
 
 
+
 export interface User {
     uid: string;
     email: string;
@@ -40,6 +41,7 @@ export interface RoomPlayer {
 }
 
 export interface DraftPick {
+    id?: string; // Doc ID from subcollection is now the player's UID
     characterId: string;
     name: string;
     role: string;
@@ -65,10 +67,11 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
-    picks: DraftPick[];
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
     currentPicker?: 'team1' | 'team2' | null;
     turn?: number;
     turnEndsAt?: number | null; // Timestamp for when the current turn ends
 }
+
+    
