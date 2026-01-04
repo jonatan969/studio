@@ -47,7 +47,7 @@ service cloud.firestore {
       }
       
       match /picks/{pickId} {
-        allow read: if isParticipant(roomId); // read includes get and list
+        allow read: if isParticipant(roomId);
         allow create: if isParticipant(roomId);
         allow update: if isParticipant(roomId);
         allow delete: if isRoomAdmin(roomId);
