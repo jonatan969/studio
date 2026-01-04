@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -62,7 +63,7 @@ export default function ProfilePage() {
       });
 
       const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDocumentNonBlocking(userDocRef, {
+      updateDocumentNonBlocking(userDocRef, {
           nickname: nickname,
           photoURL: photoURL,
       });
