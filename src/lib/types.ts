@@ -1,3 +1,12 @@
+
+export interface User {
+    uid: string;
+    email: string;
+    nickname: string;
+    photoURL: string | null;
+    role?: 'admin' | 'user';
+}
+
 export interface Character {
     id: string;
     name: string;
@@ -9,9 +18,10 @@ export interface Character {
 
 export interface SuperArt {
   id: string;
+  characterId: string; // Link back to the character
   name: string;
   description: string;
-  color: string;
+  color: 'red' | 'yellow' | 'blue';
   roman: string;
 }
 
