@@ -10,7 +10,6 @@ Welcome to your Versus Draft application! This document provides a high-level ov
     *   **Firebase Authentication**: Manages user accounts (based on a unique nickname).
 *   **TypeScript**: Ensures code quality and provides type safety.
 *   **Tailwind CSS & ShadCN UI**: Used for styling and providing a rich set of pre-built UI components.
-*   **Genkit**: Powers the AI functionality, such as generating the dramatic reveal text.
 
 ---
 
@@ -37,9 +36,32 @@ You may see a message asking you to **"Link a billing account"** to upgrade to t
 
 **Yes, for the scale of this project, it is 100% free.**
 
-*   **Why does it ask?** Your project uses an AI feature (Genkit with the Gemini API) for the dramatic reveal. Google requires a billing account on file for any project using its cloud AI services, even for free usage. This is to prevent abuse.
-*   **How does billing work?** The "Blaze" plan still includes a **very generous free tier** for all services you use (Firestore, App Hosting, Authentication, Gemini API calls). You only pay if your app's usage goes *above* these high free limits.
+*   **Why does it ask?** This is a standard requirement for activating some services. For example, if you were using an AI API from Google Cloud, a billing account is required even for the free tier.
+*   **How does billing work?** The "Blaze" plan still includes a **very generous free tier** for all services you use (Firestore, App Hosting, Authentication, etc.). You only pay if your app's usage goes *above* these high free limits.
 *   **Conclusion:** For developing, testing, and demonstrating your project, you will almost certainly not exceed the free tier, and therefore **you will not be charged anything**.
+
+---
+
+## 📊 How to Monitor Your Usage (And Stay Free)
+
+It's smart to keep an eye on your usage to ensure you're staying within the generous free tier. Firebase makes this easy.
+
+1.  **Go to the Firebase Console**: [https://console.firebase.google.com/](https://console.firebase.google.com/)
+2.  **Select your project.**
+3.  **Check each service's usage:**
+    *   **Firestore (Database):**
+        *   In the left menu, under "Build", click on **Firestore Database**.
+        *   Click the **Usage** tab at the top.
+        *   Here you can see document reads, writes, and deletes. The free plan offers thousands of operations per day.
+    *   **Authentication (Users):**
+        *   In the left menu, under "Build", click on **Authentication**.
+        *   Click the **Usage** tab.
+        *   You can see the number of monthly active users. The free plan supports thousands.
+    *   **App Hosting (Your Website):**
+        *   In the left menu, under "Build", click on **App Hosting**.
+        *   The main dashboard for your backend shows data transfer and instance hours. The free tier is more than enough for development and testing.
+
+By checking these dashboards periodically, you can have complete confidence that you are not incurring any costs.
 
 ---
 
