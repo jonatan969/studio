@@ -119,7 +119,7 @@ export const CHARACTERS: Character[] = [
 
 export const SUPER_ARTS: SuperArt[] = [
     // Bombardero
-    { "id": "sa-bombardero-1", "characterId": "char-bombardero", "name": "Exotraje Innecesariamente Mortal", "description": "Activa un modo de invulnerabilidad temporal.", "color": "yellow", "roman": "I" },
+    { "id": "sa-bombardero-1", "characterId": "char-bombardero", "name": "Exotraje Innecesariamente Mortal", "description": "Por un tiempo puede disparar misiles mucho más destructivos.", "color": "red", "roman": "I" },
     { "id": "sa-bombardero-2", "characterId": "char-bombardero", "name": "Misiles Teledirigidos", "description": "Lanza una salva de misiles que persiguen a los enemigos.", "color": "red", "roman": "II" },
     { "id": "sa-bombardero-3", "characterId": "char-bombardero", "name": "Despegue", "description": "Se eleva en el aire, ganando visión y la capacidad de atacar desde arriba.", "color": "blue", "roman": "III" },
     // Espadachin
@@ -161,7 +161,7 @@ export const SUPER_ARTS: SuperArt[] = [
     // Clerigo
     { "id": "sa-clerigo-1", "characterId": "char-clerigo", "name": "Teletransporte en masa", "description": "Teletransporta a todos los aliados cercanos a una ubicación objetivo.", "color": "blue", "roman": "I" },
     { "id": "sa-clerigo-2", "characterId": "char-clerigo", "name": "Transposicion", "description": "Intercambia posiciones con un aliado o enemigo.", "color": "yellow", "roman": "II" },
-    { "id": "sa-clerigo-3", "characterId": "char-clerigo", "name": "Graviton", "description": "Crea un pozo de gravedad que atrae a los enemigos cercanos.", "color": "red", "roman": "III" },
+    { "id": 'sa-clerigo-3', 'characterId': 'char-clerigo', 'name': 'Graviton', 'description': 'Crea un pozo de gravedad que atrae a los enemigos cercanos.', 'color': 'red', 'roman': 'III' },
     // Explorador
     { "id": "sa-explorador-1", "characterId": "char-explorador", "name": "Invocar Ravager", "description": "Invoca a una bestia poderosa que ataca a los enemigos cercanos.", "color": "red", "roman": "I" },
     { "id": "sa-explorador-2", "characterId": "char-explorador", "name": "Invocar Llamas", "description": "Invoca llamas estacionarias que queman a los enemigos.", "color": "blue", "roman": "II" },
