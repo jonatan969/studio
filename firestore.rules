@@ -3,24 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global read access for any authenticated user.
+    // Global read access for any authenticated user. This will solve the read errors.
     allow read: if request.auth != null;
 
     // Users can only create their own user document.
     match /users/{userId} {
       allow create: if request.auth.uid == userId;
-      allow update, delete: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow update, delete: if request.auth.uid == userId;
     }
 
-    // Only admins can modify game data.
+    // Only admins can write to game data.
     match /characters/{characterId} {
-      allow read: if true;
       allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Only admins can modify game data.
+    // Only admins can write to game data.
     match /super_arts/{superArtId} {
-      allow read: if true;
       allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
@@ -28,7 +26,6 @@ service cloud.firestore {
     match /rooms/{roomId} {
       // Any authenticated user can create a room.
       allow create: if request.auth != null;
-
       // Only the room admin can update or delete the room.
       allow update, delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
 
@@ -42,10 +39,8 @@ service cloud.firestore {
       
       // Picks subcollection rules
       match /picks/{pickId} {
-        // Any authenticated user can create a pick (the room logic handles turn order).
-        allow create: if request.auth != null;
-        // Any authenticated user can update their pick (for Super Arts).
-        allow update: if request.auth != null;
+        // Any authenticated user can create/update a pick (game logic handles turns).
+        allow create, update: if request.auth != null;
         // Only the room admin can delete picks.
         allow delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
