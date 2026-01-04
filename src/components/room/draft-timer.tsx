@@ -2,17 +2,16 @@
 
 import { formatTime } from '@/lib/utils';
 import { Progress } from '../ui/progress';
+import { useEffect, useState } from 'react';
 
 interface DraftTimerProps {
   phaseText: string;
   timeLeft: number;
-  maxTime: number;
   currentTeamName: string | null;
   currentTeamId: 'team1' | 'team2' | null;
 }
 
-export function DraftTimer({ phaseText, timeLeft, maxTime, currentTeamName, currentTeamId }: DraftTimerProps) {
-  const progress = maxTime > 0 ? (timeLeft / maxTime) * 100 : 0;
+export function DraftTimer({ phaseText, timeLeft, currentTeamName, currentTeamId }: DraftTimerProps) {
   const teamText = currentTeamName ? `${currentTeamName} está eligiendo` : '¡Prepárate para el draft!';
   const teamColorClass = currentTeamId === 'team1' ? 'text-orange-400' : 'text-purple-400';
 
@@ -25,7 +24,8 @@ export function DraftTimer({ phaseText, timeLeft, maxTime, currentTeamName, curr
         </div>
         <p className="text-3xl sm:text-4xl font-bold font-mono">{formatTime(timeLeft)}</p>
       </div>
-      <Progress value={progress} className="h-2" />
+      {/* Progress is not needed anymore with client-side timer, but can be kept for visual indication if desired */}
+      {/* <Progress value={progress} className="h-2" /> */}
     </div>
   );
 }
