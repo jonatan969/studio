@@ -119,7 +119,7 @@ export const CHARACTERS: Character[] = [
 
 export const SUPER_ARTS: SuperArt[] = [
     // Bombardero
-    { "id": "sa-bombardero-1", "characterId": "char-bombardero", "name": "Exotraje Innecesariamente Inmortal", "description": "Activa un modo de invulnerabilidad temporal.", "color": "yellow", "roman": "I" },
+    { "id": "sa-bombardero-1", "characterId": "char-bombardero", "name": "Exotraje Innecesariamente Mortal", "description": "Activa un modo de invulnerabilidad temporal.", "color": "yellow", "roman": "I" },
     { "id": "sa-bombardero-2", "characterId": "char-bombardero", "name": "Misiles Teledirigidos", "description": "Lanza una salva de misiles que persiguen a los enemigos.", "color": "red", "roman": "II" },
     { "id": "sa-bombardero-3", "characterId": "char-bombardero", "name": "Despegue", "description": "Se eleva en el aire, ganando visión y la capacidad de atacar desde arriba.", "color": "blue", "roman": "III" },
     // Espadachin
