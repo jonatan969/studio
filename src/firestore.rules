@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function isParticipant(roomId) {
-      return exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        return exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
     }
     
     match /users/{userId} {
