@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useReducer, useCallback, useMemo, useState } from 'react';
+import { useReducer, useCallback, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
@@ -57,6 +57,9 @@ export default function RoomPage() {
   const [isSwitchTeamDialogOpen, setSwitchTeamDialogOpen] = React.useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [preselectedCharacter, setPreselectedCharacter] = useState<Character | null>(null);
+
+  // Ref to track the last processed timestamp to prevent race conditions
+  const lastProcessedTimestamp = useRef<number | null>(null);
 
 
   const roomRef = useMemoFirebase(() => firestore ? doc(firestore, 'rooms', roomId) : null, [firestore, roomId]);
@@ -167,10 +170,13 @@ export default function RoomPage() {
       }
       
       // Handle automatic actions when timer runs out
-      if (timeLeft <= 0 && roomData.turnEndsAt) {
+      if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
+          lastProcessedTimestamp.current = roomData.turnEndsAt; // Mark this timestamp as processed
+          
           switch(roomData.phase) {
               case 'COIN_FLIP':
-                  // Handled by coin flip component completion
+                  // Handled by coin flip component completion, but this is a fallback.
+                  handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2');
                   break;
               case 'DRAFTING':
                   if (roomData.turn === undefined || !roomData.pickOrder || !roomData.currentPicker || !picksRef || !firestore) break;
@@ -329,6 +335,8 @@ export default function RoomPage() {
 
   const handleCoinFlipResult = (winner: TeamId) => {
     if(user?.uid === roomData?.adminId && roomRef && roomData) {
+        if (roomData.phase !== 'COIN_FLIP') return; // Prevent re-triggering
+        
         const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
         updateDocumentNonBlocking(roomRef, { 
             phase: 'DRAFTING', 
@@ -438,7 +446,7 @@ export default function RoomPage() {
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center min-h-[300px] lg:min-h-0">
-            {roomData.phase === 'COIN_FLIP' && timeLeft <= 0 && <CoinFlip onComplete={handleCoinFlipResult} team1Name={roomData.team1Name} team2Name={roomData.team2Name}/>}
+            {roomData.phase === 'COIN_FLIP' && <CoinFlip onComplete={handleCoinFlipResult} team1Name={roomData.team1Name} team2Name={roomData.team2Name}/>}
             
             {roomData.phase === 'DRAFTING' && (
                 <CharacterGrid
@@ -556,5 +564,3 @@ export default function RoomPage() {
     </div>
   );
 }
-
-    
