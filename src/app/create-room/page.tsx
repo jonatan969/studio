@@ -15,14 +15,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),
   team1Name: z.string().min(1, 'El nombre del equipo es obligatorio'),
   team2Name: z.string().min(1, 'El nombre del equipo es obligatorio'),
-  playersPerTeam: z.number().min(1).max(10),
+  playersPerTeam: z.number().min(1).max(5),
   spectatorLimit: z.number().min(0).max(10),
   team1Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 1').or(z.literal('')),
   team2Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 2').or(z.literal('')),
@@ -56,7 +56,7 @@ export default function CreateRoomPage() {
       roomName: 'Mi Sala Increíble',
       team1Name: 'Equipo Alfa',
       team2Name: 'Equipo Bravo',
-      playersPerTeam: 6,
+      playersPerTeam: 3,
       spectatorLimit: 4,
       team1Logo: '',
       team2Logo: '',
@@ -178,7 +178,7 @@ export default function CreateRoomPage() {
                   render={({ field }) => (
                     <Slider
                       min={1}
-                      max={10}
+                      max={5}
                       step={1}
                       value={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}

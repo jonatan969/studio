@@ -35,7 +35,6 @@ export interface RoomPlayer {
 }
 
 export interface DraftPick {
-    id: string; 
     characterId: string;
     name: string;
     role: string;
@@ -46,6 +45,7 @@ export interface DraftPick {
     nickname: string; // nickname of player who picked
     team: 'team1' | 'team2';
     pickOrder: number;
+    turn: number; // The turn number this pick was made in
     superArtId?: string;
 }
 
@@ -60,6 +60,7 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
+    picks: DraftPick[];
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
     currentPicker?: 'team1' | 'team2' | null;
