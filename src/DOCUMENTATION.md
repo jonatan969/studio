@@ -31,6 +31,16 @@ Your project is already configured for this. Follow these steps:
 
 Once the process is complete, Firebase will give you a public URL (like `your-app-name.web.app`) where you can access and test your fully functional draft system online. This is the recommended and most reliable method for this project.
 
+### A Note on Billing: "Is it really free?"
+
+You may see a message asking you to **"Link a billing account"** to upgrade to the **"Blaze (pay-as-you-go)"** plan. This is a valid question, but don't worry:
+
+**Yes, for the scale of this project, it is 100% free.**
+
+*   **Why does it ask?** Your project uses an AI feature (Genkit with the Gemini API) for the dramatic reveal. Google requires a billing account on file for any project using its cloud AI services, even for free usage. This is to prevent abuse.
+*   **How does billing work?** The "Blaze" plan still includes a **very generous free tier** for all services you use (Firestore, App Hosting, Authentication, Gemini API calls). You only pay if your app's usage goes *above* these high free limits.
+*   **Conclusion:** For developing, testing, and demonstrating your project, you will almost certainly not exceed the free tier, and therefore **you will not be charged anything**.
+
 ---
 
 ## Directory & File Breakdown

@@ -2,7 +2,7 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import { CHARACTERS, Character, SUPER_ARTS, SuperArt } from '@/lib/game-data';
+import { ROLES } from '@/lib/game-data';
 import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
@@ -16,8 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-react';
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
-import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { Room, RoomPlayer, DraftPick } from '@/lib/types';
+import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
 import { doc, collection, deleteDoc } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
+  // --- Firestore Data Hooks ---
   const roomRef = useMemoFirebase(() => firestore ? doc(firestore, 'rooms', roomId) : null, [firestore, roomId]);
   const { data: roomData, isLoading: isRoomLoading } = useDoc<Room>(roomRef);
   
@@ -60,6 +61,14 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') : null, [firestore, roomId]);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
 
+  // --- Game Data from Firestore ---
+  const charactersRef = useMemoFirebase(() => firestore ? collection(firestore, 'characters') : null, [firestore]);
+  const { data: characters, isLoading: areCharactersLoading } = useCollection<Character>(charactersRef);
+
+  const superArtsRef = useMemoFirebase(() => firestore ? collection(firestore, 'super_arts') : null, [firestore]);
+  const { data: superArts, isLoading: areSuperArtsLoading } = useCollection<SuperArt>(superArtsRef);
+  // -----------------------------
+
   const [state, dispatch] = useReducer(draftReducer, { log: [] });
   const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isSwitchTeamDialogOpen, setSwitchTeamDialogOpen] = useState(false);
@@ -68,36 +77,24 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
   // Admin leaves -> close room effect
   useEffect(() => {
-    const handleBeforeUnload = async () => {
+    const handleBeforeUnload = () => {
+      // This is a synchronous operation, but we'll use a non-blocking update
+      // for a best-effort attempt if the admin is closing the tab.
       if (user?.uid === roomData?.adminId && roomRef) {
-         try {
-           await deleteDoc(roomRef);
-         } catch (e) {
-            // This might fail if the browser closes too quickly, but it's a best-effort
-         }
+         // This is a "fire-and-forget" attempt. Not guaranteed to work on all browsers.
+         // A robust solution uses Cloud Functions with presence detection.
+         const blob = new Blob([JSON.stringify({ final: 'data' })], { type: 'application/json' });
+         navigator.sendBeacon(`/api/cleanup-room?roomId=${roomId}`, blob);
       }
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // This is a backup for when beforeunload doesn't fire (e.g., tab crash)
-    // We check if the admin is still in the players list. If not, and we are the new admin, we take over.
-    // This is a simplified version. A robust solution would use Cloud Functions and presence detection.
-    const adminStillInRoom = players?.some(p => p.uid === roomData?.adminId);
-    if(roomData && !adminStillInRoom && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
-        // Find a new admin (e.g., the first player)
-        const newAdmin = players?.find(p => p.team !== 'spectator');
-        if (newAdmin && newAdmin.uid === user?.uid) {
-            updateDocumentNonBlocking(roomRef!, { adminId: newAdmin.uid });
-            toast({ title: "El admin ha abandonado", description: "Has sido ascendido a nuevo administrador de la sala."});
-        }
-    }
-
-
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [user?.uid, roomData, roomRef, players, toast]);
+  }, [user?.uid, roomData?.adminId, roomRef, roomId]);
+
 
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !firestore || !userPlayerInfo || !roomData || !roomRef) return;
@@ -156,7 +153,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData) return;
+      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData || !characters) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
@@ -199,7 +196,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
                     const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                     const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
                     const pickedCharacterIds = draftPicks.map(p => p.characterId) || [];
-                    const availableCharacters = CHARACTERS.filter(c => !pickedCharacterIds.includes(c.id));
+                    const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
                     
                     if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && firestore) {
                         const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
@@ -237,7 +234,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
       return () => clearInterval(timer);
 
-  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router]);
+  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters]);
 
   // Client-side turn advancement logic
   useEffect(() => {
@@ -315,8 +312,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
 
     const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
     const pickData: Omit<DraftPick, 'id'> = {
-        ...character,
         characterId: character.id,
+        name: character.name,
+        role: character.role,
+        image: character.image,
+        hint: character.hint,
+        description: character.description,
         pickedBy: user.uid,
         nickname: userPlayerInfo.nickname,
         team: userPlayerInfo.team,
@@ -367,7 +368,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     }
   }
   
-  if (isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading) {
+  if (isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading || areCharactersLoading || areSuperArtsLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col">
         <PageHeader />
@@ -410,7 +411,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
   };
   
   const allFinalPicks = draftPicks?.map(pick => {
-    const superArt = SUPER_ARTS.find(sa => sa.id === pick.superArtId);
+    const superArt = superArts?.find(sa => sa.id === pick.superArtId);
     return { ...pick, superArt: superArt || null };
   }) || [];
   
@@ -463,7 +464,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
                 <div className="w-full h-full p-1 sm:p-2 border rounded-lg bg-card/50">
                     <ScrollArea className="h-[400px] sm:h-[500px] lg:h-full">
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-3 xl:grid-cols-4 gap-1 sm:gap-2 p-1">
-                            {CHARACTERS.map(char => (
+                            {(characters || []).map(char => (
                                 <CharacterSquare
                                     key={char.id}
                                     character={char}
@@ -475,11 +476,11 @@ export default function RoomPage({ params }: { params: { id: string } }) {
                     </ScrollArea>
                 </div>
             )}
-             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && (
-                <SuperArtSelector onSelect={handleSelectSuperArt} isSubmitting={isMySuperArtSubmitted} />
+             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && superArts && (
+                <SuperArtSelector superArts={superArts} onSelect={handleSelectSuperArt} isSubmitting={isMySuperArtSubmitted} />
             )}
-            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && (
-                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} />
+            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && superArts && (
+                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={superArts} />
             )}
              {roomData.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
@@ -577,5 +578,3 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
-    

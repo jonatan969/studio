@@ -1,18 +1,19 @@
 'use client';
 
-import { SUPER_ARTS, SuperArt } from '@/lib/game-data';
+import { SuperArt } from '@/lib/types';
 import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 
 interface SuperArtSelectorProps {
+  superArts: SuperArt[];
   onSelect: (art: SuperArt) => void;
   isSubmitting: boolean;
 }
 
-export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorProps) {
+export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArtSelectorProps) {
   const [selectedArt, setSelectedArt] = useState<SuperArt | null>(null);
 
   const handleSubmit = () => {
@@ -29,7 +30,7 @@ export function SuperArtSelector({ onSelect, isSubmitting }: SuperArtSelectorPro
           <CardDescription>Esta elección estará oculta hasta la revelación. Elige sabiamente.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-4 md:gap-6">
-          {SUPER_ARTS.map((art) => (
+          {superArts.map((art) => (
             <div
               key={art.id}
               onClick={() => !isSubmitting && setSelectedArt(art)}

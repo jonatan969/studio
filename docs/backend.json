@@ -30,6 +30,35 @@
         "nickname"
       ]
     },
+    "Character": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Character",
+      "type": "object",
+      "description": "Represents a playable character.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
+        "hint": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "image"]
+    },
+    "SuperArt": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SuperArt",
+      "type": "object",
+      "description": "Represents a Super Art ability.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string" },
+        "roman": { "type": "string" }
+      },
+      "required": ["id", "name", "description", "color", "roman"]
+    },
     "Room": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Room",
@@ -171,15 +200,31 @@
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" },
+          "schema": { "$ref": "#/entities/User" },
           "description": "Stores user profiles. Each document contains user-specific information."
+        }
+      },
+      {
+        "path": "/characters/{characterId}",
+        "definition": {
+          "entityName": "Character",
+          "schema": { "$ref": "#/entities/Character" },
+          "description": "Stores all playable characters available for the draft."
+        }
+      },
+      {
+        "path": "/super_arts/{superArtId}",
+        "definition": {
+          "entityName": "SuperArt",
+          "schema": { "$ref": "#/entities/SuperArt" },
+          "description": "Stores all Super Art abilities available in the game."
         }
       },
       {
         "path": "/rooms/{roomId}",
         "definition": {
           "entityName": "Room",
-          "schema": { "$ref": "#/backend/entities/Room" },
+          "schema": { "$ref": "#/entities/Room" },
           "description": "Stores room data, including settings and real-time state."
         }
       },
@@ -187,7 +232,7 @@
         "path": "/rooms/{roomId}/players/{userId}",
         "definition": {
           "entityName": "RoomPlayer",
-          "schema": { "$ref": "#/backend/entities/RoomPlayer" },
+          "schema": { "$ref": "#/entities/RoomPlayer" },
           "description": "Stores participants (players and spectators) for each room."
         }
       },
@@ -195,7 +240,7 @@
         "path": "/rooms/{roomId}/picks/{characterId}",
         "definition": {
           "entityName": "DraftPick",
-          "schema": { "$ref": "#/backend/entities/DraftPick" },
+          "schema": { "$ref": "#/entities/DraftPick" },
           "description": "Stores character picks made during the draft for a room."
         }
       }

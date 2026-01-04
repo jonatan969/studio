@@ -1,4 +1,19 @@
-import { type Character, type SuperArt } from './game-data';
+export interface Character {
+    id: string;
+    name: string;
+    role: string;
+    image: string;
+    hint: string;
+    description: string;
+}
+
+export interface SuperArt {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  roman: string;
+}
 
 export interface Room {
     id: string;
