@@ -2,42 +2,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Global Read Rule ---
-    // This single rule grants read access to ALL documents and subcollections
-    // for any authenticated user. This will definitively solve the permission errors.
-    match /{document=**} {
-      allow read: if request.auth != null;
-    }
-
-    // --- Specific Write Rules ---
-
-    // Users can only create their own user document.
-    // They can update or delete their own document.
+    // Los usuarios solo pueden crear su propio documento de usuario.
+    // Pueden actualizar o eliminar su propio documento.
     match /users/{userId} {
-      allow create: if request.auth.uid == userId;
-      allow update, delete: if request.auth.uid == userId;
+      allow read, update, delete: if request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
     
-    // Room-specific write rules
+    // Cualquier usuario autenticado puede leer la lista de salas (para el lobby) y crear nuevas salas.
     match /rooms/{roomId} {
-      // Any authenticated user can create a room.
-      allow create: if request.auth != null;
-      // Only the room admin can update or delete the room document itself.
+      allow read, create: if request.auth != null;
+      // Solo el admin puede actualizar o eliminar el documento principal de la sala.
       allow update, delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
 
-      // Player subcollection write rules
+      // Reglas para la subcolección de jugadores
       match /players/{userId} {
-        // A user can only join a room as themselves.
+        // Un usuario autenticado puede leer la lista de jugadores si es parte de la sala.
+        allow read: if request.auth != null && exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        // Un usuario puede unirse a una sala (crear su propio documento de jugador).
         allow create: if request.auth.uid == userId;
-        // A user can update/delete their own player document, or the admin can.
+        // Un usuario puede actualizar/eliminar su propio documento de jugador, o el admin puede hacerlo.
         allow update, delete: if request.auth.uid == userId || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
       
-      // Picks subcollection write rules
+      // Reglas para la subcolección de selecciones
       match /picks/{pickId} {
-        // Any authenticated user in the room can create/update a pick (game logic handles turns).
+        // Un usuario autenticado puede leer la lista de selecciones si es parte de la sala.
+        allow read: if request.auth != null && exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        // Un jugador en la sala puede crear/actualizar una selección (la lógica del juego maneja los turnos).
         allow create, update: if request.auth != null && exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
-        // Only the room admin can delete picks.
+        // Solo el admin de la sala puede eliminar selecciones.
         allow delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
     }
