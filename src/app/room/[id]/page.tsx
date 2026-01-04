@@ -2,7 +2,6 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import { ROLES } from '@/lib/game-data';
 import { useEffect, useReducer, useState, useCallback, useMemo, use } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
@@ -152,7 +151,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData || !characters) return;
+      // Ensure all necessary data is loaded before running the logic
+      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData || !characters || areCharactersLoading || !draftPicks) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
@@ -194,16 +194,21 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                     if (!roomData.currentPicker || !draftPicks) break;
                     const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                     const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
-                    const pickedCharacterIds = draftPicks.map(p => p.characterId) || [];
+                    const pickedCharacterIds = draftPicks.map(p => p.id) || [];
                     const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
                     
                     if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && firestore) {
                         const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
                         const randomCharacter = availableCharacters[Math.floor(Math.random() * availableCharacters.length)];
                         const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
+                        
                         const pickData: Omit<DraftPick, 'id'> = {
-                            ...randomCharacter,
                             characterId: randomCharacter.id,
+                            name: randomCharacter.name,
+                            role: randomCharacter.role,
+                            image: randomCharacter.image,
+                            hint: randomCharacter.hint,
+                            description: randomCharacter.description,
                             pickedBy: randomPlayer.uid,
                             nickname: randomPlayer.nickname,
                             team: roomData.currentPicker,
@@ -233,7 +238,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
       return () => clearInterval(timer);
 
-  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters]);
+  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters, areCharactersLoading]);
 
   // Client-side turn advancement logic
   useEffect(() => {
@@ -393,7 +398,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   const team1Picks = draftPicks?.filter(p => p.team === 'team1') || [];
   const team2Picks = draftPicks?.filter(p => p.team === 'team2') || [];
-  const bannedCharacterIds = draftPicks?.map(p => p.characterId) || [];
+  const bannedCharacterIds = draftPicks?.map(p => p.id) || [];
   
   const getPhaseText = () => {
     if (!roomData) return '';
@@ -475,8 +480,12 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                     </ScrollArea>
                 </div>
             )}
-             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && superArts && (
-                <SuperArtSelector superArts={superArts} onSelect={handleSelectSuperArt} isSubmitting={isMySuperArtSubmitted} />
+             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && superArts && myPick && (
+                <SuperArtSelector 
+                  superArts={superArts.filter(sa => sa.characterId === myPick.characterId)} 
+                  onSelect={handleSelectSuperArt} 
+                  isSubmitting={isMySuperArtSubmitted} 
+                />
             )}
             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && superArts && (
                 <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={superArts} />
@@ -577,5 +586,3 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
     </div>
   );
 }
-
-    

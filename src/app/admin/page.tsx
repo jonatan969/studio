@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { PageHeader } from '@/components/page-header';
-import { Loader2, PlusCircle, Trash2, Edit, ShieldAlert } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 
 const superArtSchema = z.object({
+    id: z.string().optional(), // Keep track of existing art
     name: z.string().min(1, "El nombre es obligatorio"),
     description: z.string().min(1, "La descripción es obligatoria"),
     color: z.enum(["yellow", "red", "blue"]),
@@ -58,7 +59,9 @@ export default function AdminPage() {
         defaultValues: {
             name: '',
             image: '',
-            role: 'Duelist',
+            role: '',
+            hint: '',
+            description: '',
             superArts: [
                 { name: '', description: '', color: 'red', roman: 'I' },
                 { name: '', description: '', color: 'yellow', roman: 'II' },
@@ -67,7 +70,7 @@ export default function AdminPage() {
         }
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields } = useFieldArray({
         control,
         name: "superArts"
     });
@@ -80,22 +83,35 @@ export default function AdminPage() {
 
     const handleOpenDialog = (character: Character | null = null) => {
         setEditingCharacter(character);
-        if (character) {
-            const relatedSuperArts = superArts?.filter(sa => sa.characterId === character.id) || [];
+        if (character && superArts) {
+            const relatedSuperArts = superArts.filter(sa => sa.characterId === character.id);
             reset({
                 name: character.name,
                 image: character.image,
                 role: character.role,
-                description: character.description,
-                hint: character.hint,
-                superArts: relatedSuperArts.length === 3 ? relatedSuperArts.map(sa => ({...sa})) : [ // Ensure we have 3, even if DB is inconsistent
+                description: character.description || '',
+                hint: character.hint || '',
+                superArts: relatedSuperArts.length === 3 
+                  ? relatedSuperArts.map(sa => ({ ...sa })) 
+                  : [ // Default structure if data is inconsistent
                     { name: '', description: '', color: 'red', roman: 'I' },
                     { name: '', description: '', color: 'yellow', roman: 'II' },
                     { name: '', description: '', color: 'blue', roman: 'III' },
-                ],
+                  ],
             });
         } else {
-            reset();
+             reset({
+                name: '',
+                image: '',
+                role: '',
+                hint: '',
+                description: '',
+                superArts: [
+                    { name: '', description: '', color: 'red', roman: 'I' },
+                    { name: '', description: '', color: 'yellow', roman: 'II' },
+                    { name: '', description: '', color: 'blue', roman: 'III' },
+                ]
+            });
         }
         setIsDialogOpen(true);
     };
@@ -105,7 +121,11 @@ export default function AdminPage() {
         setIsSubmitting(true);
 
         try {
-            const charRef = editingCharacter ? doc(firestore, 'characters', editingCharacter.id) : doc(collection(firestore, 'characters'));
+            const batch = writeBatch(firestore);
+
+            const charRef = editingCharacter 
+              ? doc(firestore, 'characters', editingCharacter.id) 
+              : doc(collection(firestore, 'characters'));
             
             const characterData: Omit<Character, 'id'> = {
                 name: data.name,
@@ -114,34 +134,37 @@ export default function AdminPage() {
                 description: data.description || '',
                 hint: data.hint || '',
             };
-
-            if (editingCharacter) {
-                await updateDocumentNonBlocking(charRef, characterData);
-            } else {
-                await setDocumentNonBlocking(charRef, characterData, {});
-            }
-
+            
+            // Set or update character
+            batch.set(charRef, characterData, { merge: true });
+            
             const characterId = charRef.id;
 
             // Delete old super arts if editing
-            if (editingCharacter) {
-                const oldSuperArts = superArts?.filter(sa => sa.characterId === editingCharacter.id) || [];
+            if (editingCharacter && superArts) {
+                const oldSuperArts = superArts.filter(sa => sa.characterId === editingCharacter.id);
                 for (const art of oldSuperArts) {
-                    await deleteDoc(doc(firestore, 'super_arts', art.id));
+                    batch.delete(doc(firestore, 'super_arts', art.id));
                 }
             }
-
-            // Create new super arts
+            
+            // Create/update new super arts
             for (const artData of data.superArts) {
-                const artRef = doc(collection(firestore, 'super_arts'));
-                await setDocumentNonBlocking(artRef, { ...artData, characterId: characterId }, {});
+                // If editing an existing art, use its ID. Otherwise, create a new one.
+                const artRef = artData.id 
+                  ? doc(firestore, 'super_arts', artData.id)
+                  : doc(collection(firestore, 'super_arts'));
+
+                const { id, ...restOfArtData } = artData; // Exclude form-only 'id'
+                batch.set(artRef, { ...restOfArtData, characterId: characterId });
             }
+
+            await batch.commit();
 
             toast({ title: `Éxito`, description: `Personaje ${editingCharacter ? 'actualizado' : 'creado'} correctamente.` });
             setIsDialogOpen(false);
-            reset();
-
         } catch (error: any) {
+            console.error("Error submitting character:", error);
             toast({ variant: 'destructive', title: 'Error', description: error.message });
         } finally {
             setIsSubmitting(false);
@@ -149,18 +172,22 @@ export default function AdminPage() {
     };
     
     const handleDeleteCharacter = async (characterId: string) => {
-        if (!firestore) return;
+        if (!firestore || !superArts) return;
         if (!confirm(`¿Estás seguro de que quieres eliminar este personaje y todos sus Super Arts? Esta acción no se puede deshacer.`)) return;
 
         try {
-            // Delete character document
-            await deleteDoc(doc(firestore, 'characters', characterId));
+            const batch = writeBatch(firestore);
+            
+            // Mark character for deletion
+            batch.delete(doc(firestore, 'characters', characterId));
 
-            // Delete associated super arts
-            const artsToDelete = superArts?.filter(sa => sa.characterId === characterId) || [];
+            // Mark associated super arts for deletion
+            const artsToDelete = superArts.filter(sa => sa.characterId === characterId);
             for (const art of artsToDelete) {
-                await deleteDoc(doc(firestore, 'super_arts', art.id));
+                batch.delete(doc(firestore, 'super_arts', art.id));
             }
+            
+            await batch.commit();
             
             toast({ title: 'Personaje Eliminado' });
         } catch (error: any) {
@@ -168,7 +195,7 @@ export default function AdminPage() {
         }
     }
 
-    if (isUserLoading || user?.role !== 'admin') {
+    if (isUserLoading || !user || user.role !== 'admin') {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -177,7 +204,8 @@ export default function AdminPage() {
     }
     
     const getCharacterSuperArts = (characterId: string) => {
-        return superArts?.filter(sa => sa.characterId === characterId) || [];
+        if (!superArts) return [];
+        return superArts.filter(sa => sa.characterId === characterId);
     };
 
     return (
@@ -256,7 +284,9 @@ export default function AdminPage() {
                     </CardHeader>
                     <CardContent>
                         {isLoadingCharacters || isLoadingSuperArts ? (
-                            <Loader2 className="animate-spin" />
+                             <div className="flex items-center justify-center p-8">
+                                <Loader2 className="animate-spin" />
+                            </div>
                         ) : (
                             <Accordion type="single" collapsible className="w-full">
                                 {characters?.map(character => (
