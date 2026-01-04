@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import { ChevronDown, LogOut, User as UserIcon, Shield } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
 
 export function PageHeader() {
@@ -27,6 +27,7 @@ export function PageHeader() {
   };
   
   const getInitials = (name: string | null) => {
+    if (!name) return 'U';
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   }
 
@@ -65,6 +66,12 @@ export function PageHeader() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem onSelect={() => router.push('/admin')} className="cursor-pointer">
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>Admin Panel</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onSelect={() => router.push('/profile')} className="cursor-pointer">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Perfil</span>

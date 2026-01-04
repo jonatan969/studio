@@ -10,9 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser, useAuth, useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useAuth, useFirestore, updateDocumentNonBlocking } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -55,20 +56,17 @@ export default function ProfilePage() {
     setIsLoading(true);
 
     try {
-      // Update Firebase Auth user profile
       await updateProfile(auth.currentUser, { 
           photoURL: photoURL,
           displayName: nickname,
       });
 
-      // Update the nickname in the user's Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDocumentNonBlocking(userDocRef, {
           nickname: nickname,
           photoURL: photoURL,
       });
       
-      // Manually trigger a refresh of the user object to get the latest data
       await refreshUser();
       
       toast({
@@ -103,7 +101,10 @@ export default function ProfilePage() {
       <main className="flex-1 container py-4 sm:py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl sm:text-3xl">Tu Perfil</CardTitle>
+            <div className='flex items-center justify-between'>
+                <CardTitle className="font-headline text-2xl sm:text-3xl">Tu Perfil</CardTitle>
+                {user.role === 'admin' && <Badge>Administrador</Badge>}
+            </div>
             <CardDescription>Ve y edita la información de tu perfil.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

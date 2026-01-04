@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Character } from '@/lib/game-data';
+import { Character } from '@/lib/types';
 
 interface CharacterSquareProps {
   character: Character;
@@ -25,7 +25,7 @@ export function CharacterSquare({ character, isPicked, onClick }: CharacterSquar
           isPicked ? 'opacity-100' : 'opacity-0 group-hover:opacity-20'
         )} />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           {!isPicked && <p className="text-white font-bold text-lg drop-shadow-lg">{character.name}</p>}
+           {!isPicked && <p className="text-white font-bold text-lg drop-shadow-lg text-center px-1">{character.name}</p>}
         </div>
        <div className={cn(
         'absolute inset-0 transition-all duration-300 border-2 border-transparent',

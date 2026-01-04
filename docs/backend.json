@@ -6,29 +6,13 @@
       "type": "object",
       "description": "Represents a user in the system.",
       "properties": {
-        "uid": {
-          "type": "string",
-          "description": "Unique identifier for the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the user.",
-          "format": "email"
-        },
-        "nickname": {
-          "type": "string",
-          "description": "Nickname of the user. Must be unique."
-        },
-        "photoURL": {
-          "type": "string",
-          "format": "uri"
-        }
+        "uid": { "type": "string", "description": "Unique identifier for the user." },
+        "email": { "type": "string", "description": "Email address of the user.", "format": "email" },
+        "nickname": { "type": "string", "description": "Nickname of the user. Must be unique." },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
       },
-      "required": [
-        "uid",
-        "email",
-        "nickname"
-      ]
+      "required": ["uid", "email", "nickname"]
     },
     "Character": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -52,12 +36,13 @@
       "description": "Represents a Super Art ability.",
       "properties": {
         "id": { "type": "string" },
+        "characterId": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "color": { "type": "string" },
+        "color": { "type": "string", "enum": ["red", "yellow", "blue"] },
         "roman": { "type": "string" }
       },
-      "required": ["id", "name", "description", "color", "roman"]
+      "required": ["id", "characterId", "name", "description", "color", "roman"]
     },
     "Room": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -65,77 +50,25 @@
       "type": "object",
       "description": "Represents a draft room.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the room."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the room."
-        },
-        "adminId": {
-          "type": "string",
-          "description": "UID of the user who created the room."
-        },
-        "team1Name": {
-          "type": "string"
-        },
-        "team2Name": {
-          "type": "string"
-        },
-        "team1Logo": {
-          "type": "string"
-        },
-        "team2Logo": {
-          "type": "string"
-        },
-        "playersPerTeam": {
-          "type": "number"
-        },
-        "spectatorLimit": {
-          "type": "number"
-        },
-        "phase": {
-          "type": "string",
-          "enum": ["PREP", "COIN_FLIP", "DRAFTING", "SUPER_ART", "REVEAL", "FINISHED", "CANCELED"]
-        },
-        "playerCount": {
-          "type": "number"
-        },
-        "firstPicker": {
-            "type": "string",
-            "enum": ["team1", "team2"]
-        },
-        "currentPicker": {
-            "type": "string",
-            "enum": ["team1", "team2"]
-        },
-        "turn": {
-            "type": "number"
-        },
-        "picksPerTurn": {
-            "type": "number"
-        },
-        "timeLeft": {
-            "type": "number"
-        },
-        "maxTime": {
-            "type": "number"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the room." },
+        "name": { "type": "string", "description": "Name of the room." },
+        "adminId": { "type": "string", "description": "UID of the user who created the room." },
+        "team1Name": { "type": "string" },
+        "team2Name": { "type": "string" },
+        "team1Logo": { "type": "string" },
+        "team2Logo": { "type": "string" },
+        "playersPerTeam": { "type": "number" },
+        "spectatorLimit": { "type": "number" },
+        "phase": { "type": "string", "enum": ["PREP", "COIN_FLIP", "DRAFTING", "SUPER_ART", "REVEAL", "FINISHED", "CANCELED"] },
+        "playerCount": { "type": "number" },
+        "firstPicker": { "type": "string", "enum": ["team1", "team2"] },
+        "currentPicker": { "type": "string", "enum": ["team1", "team2"] },
+        "turn": { "type": "number" },
+        "picksPerTurn": { "type": "number" },
+        "timeLeft": { "type": "number" },
+        "maxTime": { "type": "number" }
       },
-      "required": [
-        "id",
-        "name",
-        "adminId",
-        "team1Name",
-        "team2Name",
-        "team1Logo",
-        "team2Logo",
-        "playersPerTeam",
-        "spectatorLimit",
-        "phase",
-        "playerCount"
-      ]
+      "required": [ "id", "name", "adminId", "team1Name", "team2Name", "team1Logo", "team2Logo", "playersPerTeam", "spectatorLimit", "phase", "playerCount" ]
     },
     "RoomPlayer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -143,31 +76,13 @@
       "type": "object",
       "description": "Represents a player's presence in a room.",
       "properties": {
-        "uid": {
-          "type": "string",
-          "description": "User ID of the player."
-        },
-        "nickname": {
-          "type": "string"
-        },
-        "photoURL": {
-          "type": "string",
-          "format": "uri"
-        },
-        "team": {
-          "type": "string",
-          "description": "The team the player is on (e.g., 'team1', 'team2', 'spectator')."
-        },
-        "isReady": {
-          "type": "boolean"
-        }
+        "uid": { "type": "string", "description": "User ID of the player." },
+        "nickname": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "team": { "type": "string", "description": "The team the player is on (e.g., 'team1', 'team2', 'spectator')." },
+        "isReady": { "type": "boolean" }
       },
-      "required": [
-        "uid",
-        "nickname",
-        "team",
-        "isReady"
-      ]
+      "required": ["uid", "nickname", "team", "isReady"]
     },
     "DraftPick": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -189,60 +104,32 @@
       "required": ["id", "name", "pickedBy", "team", "pickOrder"]
     }
   },
-  "auth": {
-    "providers": [
-      "password"
-    ]
-  },
+  "auth": { "providers": ["password"] },
   "firestore": {
     "structure": [
       {
         "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/entities/User" },
-          "description": "Stores user profiles. Each document contains user-specific information."
-        }
+        "definition": { "entityName": "User", "schema": { "$ref": "#/entities/User" }, "description": "Stores user profiles. Each document contains user-specific information." }
       },
       {
         "path": "/characters/{characterId}",
-        "definition": {
-          "entityName": "Character",
-          "schema": { "$ref": "#/entities/Character" },
-          "description": "Stores all playable characters available for the draft."
-        }
+        "definition": { "entityName": "Character", "schema": { "$ref": "#/entities/Character" }, "description": "Stores all playable characters available for the draft." }
       },
       {
         "path": "/super_arts/{superArtId}",
-        "definition": {
-          "entityName": "SuperArt",
-          "schema": { "$ref": "#/entities/SuperArt" },
-          "description": "Stores all Super Art abilities available in the game."
-        }
+        "definition": { "entityName": "SuperArt", "schema": { "$ref": "#/entities/SuperArt" }, "description": "Stores all Super Art abilities available in the game." }
       },
       {
         "path": "/rooms/{roomId}",
-        "definition": {
-          "entityName": "Room",
-          "schema": { "$ref": "#/entities/Room" },
-          "description": "Stores room data, including settings and real-time state."
-        }
+        "definition": { "entityName": "Room", "schema": { "$ref": "#/entities/Room" }, "description": "Stores room data, including settings and real-time state." }
       },
       {
         "path": "/rooms/{roomId}/players/{userId}",
-        "definition": {
-          "entityName": "RoomPlayer",
-          "schema": { "$ref": "#/entities/RoomPlayer" },
-          "description": "Stores participants (players and spectators) for each room."
-        }
+        "definition": { "entityName": "RoomPlayer", "schema": { "$ref": "#/entities/RoomPlayer" }, "description": "Stores participants (players and spectators) for each room." }
       },
       {
         "path": "/rooms/{roomId}/picks/{characterId}",
-        "definition": {
-          "entityName": "DraftPick",
-          "schema": { "$ref": "#/entities/DraftPick" },
-          "description": "Stores character picks made during the draft for a room."
-        }
+        "definition": { "entityName": "DraftPick", "schema": { "$ref": "#/entities/DraftPick" }, "description": "Stores character picks made during the draft for a room." }
       }
     ]
   }

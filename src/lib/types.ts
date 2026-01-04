@@ -1,17 +1,28 @@
+
+
+export interface User {
+    uid: string;
+    email: string;
+    nickname: string;
+    photoURL: string | null;
+    role?: 'admin' | 'user';
+}
+
 export interface Character {
     id: string;
     name: string;
     role: string;
     image: string;
-    hint: string;
-    description: string;
+    hint?: string;
+    description?: string;
 }
 
 export interface SuperArt {
   id: string;
+  characterId: string; // Link back to the character
   name: string;
   description: string;
-  color: string;
+  color: 'red' | 'yellow' | 'blue';
   roman: string;
 }
 
@@ -44,9 +55,14 @@ export interface RoomPlayer {
     isReady: boolean;
 }
 
-export interface DraftPick extends Omit<Character, 'id'> {
+export interface DraftPick {
     id: string; // The doc ID from firestore
-    characterId: string; // The original character ID from game-data
+    characterId: string; // The original character ID
+    name: string;
+    role: string;
+    image: string;
+    hint?: string;
+    description?: string;
     pickedBy: string; // uid of player
     nickname: string; // nickname of player who picked
     team: 'team1' | 'team2';

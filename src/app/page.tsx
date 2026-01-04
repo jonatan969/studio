@@ -11,9 +11,9 @@ import { VersusLogo } from '@/components/icons/logo';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
@@ -23,7 +23,7 @@ export default function AuthPage() {
   const auth = useAuth();
   const firestore = useFirestore();
 
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginNickname, setLoginNickname] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupNickname, setSignupNickname] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -37,9 +37,9 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    const email = generateEmail(loginNickname);
     try {
-        await signInWithEmailAndPassword(auth, generateEmail(loginEmail), loginPassword);
+        await signInWithEmailAndPassword(auth, email, loginPassword);
         toast({
             title: 'Conexión Exitosa',
             description: `¡Bienvenido de nuevo!`,
@@ -51,6 +51,7 @@ export default function AuthPage() {
             title: 'Conexión Fallida',
             description: 'Usuario o Contraseña incorrectos. Por favor inténtalo de nuevo.',
         });
+    } finally {
         setIsLoading(false);
     }
   };
@@ -77,9 +78,10 @@ export default function AuthPage() {
         email: user.email,
         nickname: signupNickname,
         photoURL: null,
+        role: 'user', // Default role
       };
 
-      await setDocumentNonBlocking(userDocRef, userData, { merge: true });
+      await setDoc(userDocRef, userData);
 
       toast({
         title: '¡Cuenta Creada!',
@@ -94,7 +96,8 @@ export default function AuthPage() {
         title: 'Registro Fallido',
         description: error.message || 'No se pudo crear la cuenta. Inténtalo otra vez.',
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -136,8 +139,8 @@ export default function AuthPage() {
                                     type="text"
                                     placeholder="Tu Nickname"
                                     required
-                                    value={loginEmail}
-                                    onChange={(e) => setLoginEmail(e.target.value)}
+                                    value={loginNickname}
+                                    onChange={(e) => setLoginNickname(e.target.value)}
                                     disabled={isLoading}
                                     />
                                 </div>

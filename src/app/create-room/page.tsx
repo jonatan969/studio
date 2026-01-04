@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +37,12 @@ export default function CreateRoomPage() {
   const firestore = useFirestore();
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/');
+    }
+  }, [isUserLoading, user, router]);
+
   const {
     register,
     handleSubmit,
@@ -70,8 +76,7 @@ export default function CreateRoomPage() {
     setIsLoading(true);
     
     try {
-        const roomsColRef = collection(firestore, 'rooms');
-        const newRoomRef = doc(roomsColRef);
+        const newRoomRef = doc(collection(firestore, 'rooms'));
         const newRoomId = newRoomRef.id;
 
         const roomData = {
@@ -84,7 +89,6 @@ export default function CreateRoomPage() {
             team2Logo: data.team2Logo,
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
-            status: 'waiting',
             playerCount: 1,
             phase: 'PREP',
         };
@@ -113,7 +117,7 @@ export default function CreateRoomPage() {
     }
   };
   
-  if(isUserLoading) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin" /></div>
+  if(isUserLoading || !user) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="animate-spin" /></div>
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -133,7 +137,6 @@ export default function CreateRoomPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-                {/* Team 1 Settings */}
                 <div className="space-y-4 p-4 border rounded-lg">
                   <h3 className="font-headline text-xl text-orange-400">Equipo 1</h3>
                   <div className="space-y-2">
@@ -148,7 +151,6 @@ export default function CreateRoomPage() {
                   </div>
                 </div>
 
-                {/* Team 2 Settings */}
                 <div className="space-y-4 p-4 border rounded-lg">
                   <h3 className="font-headline text-xl text-purple-400">Equipo 2</h3>
                   <div className="space-y-2">
@@ -225,7 +227,6 @@ export default function CreateRoomPage() {
                   )}
                  />
               </div>
-
 
               <Button type="submit" className="w-full font-bold" disabled={isLoading || isUserLoading}>
                 {isLoading ? <Loader2 className="animate-spin" /> : 'Crear Sala'}
