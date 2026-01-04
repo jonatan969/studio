@@ -1,6 +1,5 @@
 'use client';
 
-import { generateDramaticReveal } from '@/ai/flows/generate-dramatic-reveal';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { SuperArt } from '@/lib/game-data';
@@ -43,32 +42,15 @@ function TypingEffect({ text, onFinished }: { text: string; onFinished: () => vo
 }
 
 export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: DramaticRevealProps) {
-  const [revealText, setRevealText] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [revealText, setRevealText] = useState('Las elecciones han sido tomadas. Los poderes han sido elegidos. ¡Que comience la batalla!');
+  const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    const getReveal = async () => {
-      const team1SuperArt = allPicks.find(p => p.team === 'team1' && p.superArt)?.superArt?.name || "un poder misterioso";
-      const team2SuperArt = allPicks.find(p => p.team === 'team2' && p.superArt)?.superArt?.name || "un poder arcano";
-
-      try {
-        const result = await generateDramaticReveal({
-          team1SuperArt,
-          team2SuperArt,
-        });
-        setRevealText(result.revealText);
-      } catch (error) {
-        console.error('Failed to generate dramatic reveal:', error);
-        setRevealText('Los dados están echados. Los poderes han sido elegidos. ¡Que comience la batalla!');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getReveal();
-  }, [allPicks]);
+    // No-op, we use static text now. Kept for structure.
+    setIsLoading(false);
+  }, []);
 
   if (showAll) {
     return (
