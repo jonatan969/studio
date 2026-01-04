@@ -5,44 +5,45 @@ service cloud.firestore {
     // Global read access for any authenticated user.
     allow read: if request.auth != null;
 
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
+    // Users can only create their own user document.
     match /users/{userId} {
-      // Read is covered by global rule.
       allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || isAdmin();
-      allow delete: if request.auth.uid == userId || isAdmin();
+      allow update, delete: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Only admins can modify game data.
     match /characters/{characterId} {
-      // Read is covered by global rule.
-      allow write: if isAdmin();
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Only admins can modify game data.
     match /super_arts/{superArtId} {
-      // Read is covered by global rule.
-      allow write: if isAdmin();
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-
+    
+    // Room-specific rules
     match /rooms/{roomId} {
-      // Read is covered by global rule.
-      allow create: if request.auth != null && request.resource.data.adminId == request.auth.uid;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
+      // Any authenticated user can create a room.
+      allow create: if request.auth != null;
 
+      // Only the room admin can update or delete the room.
+      allow update, delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
+
+      // Player subcollection rules
       match /players/{userId} {
-        // Read is covered by global rule.
+        // A user can only join a room as themselves.
         allow create: if request.auth.uid == userId;
-        allow update: if request.auth.uid == userId || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
-        allow delete: if request.auth.uid == userId || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
+        // A user can update/delete their own player document, or the admin can.
+        allow update, delete: if request.auth.uid == userId || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
-
+      
+      // Picks subcollection rules
       match /picks/{pickId} {
-        // Read is covered by global rule.
+        // Any authenticated user can create a pick (the room logic handles turn order).
         allow create: if request.auth != null;
+        // Any authenticated user can update their pick (for Super Arts).
         allow update: if request.auth != null;
+        // Only the room admin can delete picks.
         allow delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
     }
