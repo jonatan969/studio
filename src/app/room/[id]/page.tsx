@@ -77,40 +77,21 @@ export default function RoomPage() {
     }
   }, [firestore, roomId]);
 
-  useEffect(() => {
-    if (user?.uid === roomData?.adminId) {
-      const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-        // Synchronous cleanup not reliable, rely on phase timers
-      };
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        if (roomData?.phase !== 'FINISHED' && roomData?.phase !== 'CANCELED') {
-           if (roomRef) updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
-        }
-      };
-    }
-  }, [user?.uid, roomData?.adminId, roomData?.phase, roomRef]);
 
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !roomData || !roomRef) return;
-    
-    if (roomData.adminId === user.uid) {
-      toast({ title: 'Sala Cerrada', description: 'Como administrador, has cerrado la sala.' });
-      await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED', timeLeft: 15, maxTime: 15 });
-      router.push('/dashboard');
-      return;
-    }
-    
+        
     const updatedPlayers = roomData.players.filter(p => p.uid !== user.uid);
     await updateDocumentNonBlocking(roomRef, { players: updatedPlayers });
 
+    // Si un jugador se va durante el draft (no en preparación), se cancela la sala
     if (userPlayerInfo?.team !== 'spectator' && roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
        await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
        dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} se ha ido, cancelando el draft.`});
     }
+    
     router.push('/dashboard');
-  }, [user, userPlayerInfo, roomData, roomRef, router, toast]);
+  }, [user, userPlayerInfo, roomData, roomRef, router]);
 
 
   useEffect(() => {
@@ -144,7 +125,16 @@ export default function RoomPage() {
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      if (allDataLoading || user?.uid !== roomData?.adminId || !roomRef || !players) return;
+      if (allDataLoading || !roomData || !roomRef || !players) return;
+
+      // Rule: Si la sala se queda sin jugadores, se cancela.
+      if (roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED' && players.length === 0) {
+        updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
+        return; // Detiene la ejecución para evitar otros cambios de estado
+      }
+
+      // Solo el admin puede cambiar el estado de la sala
+      if (user?.uid !== roomData?.adminId) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
