@@ -24,7 +24,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
 
-
 type TeamId = 'team1' | 'team2';
 
 interface DraftState {
@@ -34,7 +33,6 @@ interface DraftState {
 function draftReducer(state: DraftState, action: {type: 'LOG', message: string}): DraftState {
   switch (action.type) {
     case 'LOG':
-      // Prevent duplicate logs
       if (state.log[0] === action.message) return state;
       return { ...state, log: [action.message, ...state.log] };
     default:
@@ -49,7 +47,6 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  // --- Firestore Data Hooks ---
   const roomRef = useMemoFirebase(() => firestore ? doc(firestore, 'rooms', roomId) : null, [firestore, roomId]);
   const { data: roomData, isLoading: isRoomLoading } = useDoc<Room>(roomRef);
   
@@ -59,13 +56,11 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') : null, [firestore, roomId]);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
 
-  // --- Game Data from Firestore ---
   const charactersRef = useMemoFirebase(() => firestore ? collection(firestore, 'characters') : null, [firestore]);
   const { data: characters, isLoading: areCharactersLoading } = useCollection<Character>(charactersRef);
 
   const superArtsRef = useMemoFirebase(() => firestore ? collection(firestore, 'super_arts') : null, [firestore]);
   const { data: superArts, isLoading: areSuperArtsLoading } = useCollection<SuperArt>(superArtsRef);
-  // -----------------------------
 
   const [state, dispatch] = useReducer(draftReducer, { log: [] });
   const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
@@ -73,31 +68,22 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  // Admin leaves -> close room effect
+  const allDataLoading = isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading || areCharactersLoading || areSuperArtsLoading;
+
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      // This is a synchronous operation, but we'll use a non-blocking update
-      // for a best-effort attempt if the admin is closing the tab.
-      if (user?.uid === roomData?.adminId && roomRef) {
-         // This is a "fire-and-forget" attempt. Not guaranteed to work on all browsers.
-         // A robust solution uses Cloud Functions with presence detection.
-         const blob = new Blob([JSON.stringify({ final: 'data' })], { type: 'application/json' });
-         navigator.sendBeacon(`/api/cleanup-room?roomId=${roomId}`, blob);
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
+    if (user?.uid === roomData?.adminId && roomRef) {
+      const handleBeforeUnload = () => {
+        navigator.sendBeacon(`/api/cleanup?roomId=${roomId}`);
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
   }, [user?.uid, roomData?.adminId, roomRef, roomId]);
-
 
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !firestore || !userPlayerInfo || !roomData || !roomRef) return;
-
-    // Admin leaving, close the whole room
     if (roomData.adminId === user.uid) {
       toast({ title: 'Sala Cerrada', description: 'Como administrador, has cerrado la sala.' });
       await deleteDoc(roomRef);
@@ -105,26 +91,21 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       return;
     }
     
-    // Regular user leaving
     const playerRef = doc(firestore, `rooms/${roomId}/players`, user.uid);
     await deleteDoc(playerRef);
 
-    // If a player leaves mid-draft, cancel it
     if (userPlayerInfo.team !== 'spectator' && roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
        await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
        dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} se ha ido, cancelando el draft.`});
     }
-
     router.push('/dashboard');
-
   }, [user, firestore, userPlayerInfo, roomData, roomId, router, roomRef, toast]);
 
-  // Handle joining a room for the first time
   useEffect(() => {
-    if (!isRoomLoading && roomData && !arePlayersLoading && user && !userPlayerInfo) {
+    if (!allDataLoading && roomData && user && !userPlayerInfo) {
       setJoinDialogOpen(true);
     }
-  }, [isRoomLoading, arePlayersLoading, user, userPlayerInfo, roomData]);
+  }, [allDataLoading, user, userPlayerInfo, roomData]);
 
   const handleJoin = (team: 'team1' | 'team2' | 'spectator') => {
     if (!user || !firestore || !roomData) return;
@@ -151,29 +132,21 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      // Ensure all necessary data is loaded before running the logic
-      if (user?.uid !== roomData?.adminId || !roomRef || !players || !roomData || !characters || areCharactersLoading || !draftPicks) return;
+      if (allDataLoading || user?.uid !== roomData?.adminId || !roomRef || !players || !characters || !draftPicks) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
 
-      // PREP -> COIN_FLIP
       if (roomData.phase === 'PREP' && team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
         if (roomData.timeLeft !== DRAFT_START_TIMER) {
-            updateDocumentNonBlocking(roomRef, { 
-                phase: 'COIN_FLIP', 
-                timeLeft: DRAFT_START_TIMER,
-                maxTime: DRAFT_START_TIMER,
-            });
+            updateDocumentNonBlocking(roomRef, { phase: 'COIN_FLIP', timeLeft: DRAFT_START_TIMER, maxTime: DRAFT_START_TIMER });
             dispatch({type: 'LOG', message: `¡Los equipos están completos! La cuenta atrás ha comenzado.`});
         }
       } else if (roomData.phase === 'COIN_FLIP' && (team1Players !== roomData.playersPerTeam || team2Players !== roomData.playersPerTeam)) {
-          // A player left, go back to PREP
           updateDocumentNonBlocking(roomRef, { phase: 'PREP', timeLeft: 0, maxTime: 0 });
           dispatch({type: 'LOG', message: `Un jugador se ha ido. Esperando a que los equipos se llenen de nuevo.`});
       }
 
-      // Timer tick down
       const timer = setInterval(() => {
         if(!roomData || roomData.timeLeft === undefined || roomData.timeLeft <= 0) {
             clearInterval(timer);
@@ -184,13 +157,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
         updateDocumentNonBlocking(roomRef, { timeLeft: newTimeLeft });
 
         if (newTimeLeft <= 0) {
-             // Handle timer expiration based on phase
             switch(roomData.phase) {
-                case 'COIN_FLIP':
-                    // The onComplete of the coin flip will trigger DRAFTING phase
-                    break;
                 case 'DRAFTING':
-                    // Auto-pick logic
                     if (!roomData.currentPicker || !draftPicks) break;
                     const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                     const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
@@ -238,81 +206,43 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
       return () => clearInterval(timer);
 
-  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters, areCharactersLoading]);
+  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters, allDataLoading]);
 
   // Client-side turn advancement logic
   useEffect(() => {
-    if(!firestore || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData?.adminId) return;
+    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData?.adminId || roomData.turn === undefined) return;
 
     const totalPicksMade = draftPicks.length;
-    if (roomData.turn === undefined) return;
-    
-    const picksExpectedBeforeThisTurn = roomData.turn > 0
-      ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0)
-      : 0;
-
+    const picksExpectedBeforeThisTurn = roomData.turn > 0 ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0) : 0;
     const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
     if (picksExpectedThisTurn === undefined) return;
-
     const picksMadeThisTurn = totalPicksMade - picksExpectedBeforeThisTurn;
 
     if (picksMadeThisTurn >= picksExpectedThisTurn) {
          const newTurn = roomData.turn + 1;
-
          if (newTurn >= roomData.pickOrder.length) {
-              updateDocumentNonBlocking(roomRef, {
-                  phase: 'SUPER_ART',
-                  timeLeft: SUPER_ART_PICK_TIME,
-                  maxTime: SUPER_ART_PICK_TIME,
-                  currentPicker: null,
-                  turn: null,
-                  picksPerTurn: null,
-              });
+              updateDocumentNonBlocking(roomRef, { phase: 'SUPER_ART', timeLeft: SUPER_ART_PICK_TIME, maxTime: SUPER_ART_PICK_TIME, currentPicker: null, turn: null, picksPerTurn: null });
               dispatch({type: 'LOG', message: '¡Todos los personajes seleccionados! Hora de elegir los Super Arts.'});
          } else {
              const nextTurnInfo = roomData.pickOrder[newTurn];
-             updateDocumentNonBlocking(roomRef, {
-                 turn: newTurn,
-                 currentPicker: nextTurnInfo.team,
-                 picksPerTurn: nextTurnInfo.picks,
-                 timeLeft: DRAFT_PICK_TIME,
-                 maxTime: DRAFT_PICK_TIME,
-             });
+             updateDocumentNonBlocking(roomRef, { turn: newTurn, currentPicker: nextTurnInfo.team, picksPerTurn: nextTurnInfo.picks, timeLeft: DRAFT_PICK_TIME, maxTime: DRAFT_PICK_TIME });
              const nextTeamName = nextTurnInfo.team === 'team1' ? roomData.team1Name : roomData.team2Name;
              dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
          }
     }
-  }, [draftPicks, roomData, firestore, user, roomRef]);
-
+  }, [draftPicks, roomData, user, roomRef, allDataLoading]);
 
   const handlePickCharacter = (character: Character) => {
-    if (!user || !roomData || !players || !draftPicks || !firestore || !userPlayerInfo || !roomData.pickOrder || roomData.turn === undefined || roomData.picksPerTurn === undefined) return;
-    
-    if (userPlayerInfo.team === 'spectator') {
-        toast({ variant: 'destructive', title: 'Los espectadores no pueden elegir.' });
-        return;
-    }
-    if (roomData.phase !== 'DRAFTING' || roomData.currentPicker !== userPlayerInfo.team) {
-        toast({ variant: 'destructive', title: "No es el turno de tu equipo para elegir." });
-        return;
-    }
-    
-    if(draftPicks.some(p => p.pickedBy === user.uid)) {
-        toast({ variant: 'destructive', title: 'Ya has elegido un personaje.' });
-        return;
-    }
+    if (allDataLoading || !user || !players || !draftPicks || !firestore || !userPlayerInfo || !roomData.pickOrder || roomData.turn === undefined || roomData.picksPerTurn === undefined) return;
+    if (userPlayerInfo.team === 'spectator') { toast({ variant: 'destructive', title: 'Los espectadores no pueden elegir.' }); return; }
+    if (roomData.phase !== 'DRAFTING' || roomData.currentPicker !== userPlayerInfo.team) { toast({ variant: 'destructive', title: "No es el turno de tu equipo para elegir." }); return; }
+    if(draftPicks.some(p => p.pickedBy === user.uid)) { toast({ variant: 'destructive', title: 'Ya has elegido un personaje.' }); return; }
     
     const totalPicksMade = draftPicks.length;
-    const picksExpectedBeforeThisTurn = roomData.turn > 0
-      ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0)
-      : 0;
-
+    const picksExpectedBeforeThisTurn = roomData.turn > 0 ? roomData.pickOrder.slice(0, roomData.turn).reduce((acc, turnInfo) => acc + turnInfo.picks, 0) : 0;
     const picksMadeThisTurn = totalPicksMade - picksExpectedBeforeThisTurn;
 
-    if (picksMadeThisTurn >= roomData.picksPerTurn) {
-        toast({ variant: 'destructive', title: "Tu equipo ya ha elegido para este turno." });
-        return;
-    }
+    if (picksMadeThisTurn >= roomData.picksPerTurn) { toast({ variant: 'destructive', title: "Tu equipo ya ha elegido para este turno." }); return; }
 
     const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
     const pickData: Omit<DraftPick, 'id'> = {
@@ -327,9 +257,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
         team: userPlayerInfo.team,
         pickOrder: draftPicks.length + 1,
     };
-    
     setDocumentNonBlocking(newPickRef, pickData, {});
-
     toast({ title: '¡Personaje Elegido!', description: `Elegiste a ${character.name}.` });
     dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} eligió a ${character.name}.`});
   };
@@ -337,20 +265,18 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const handleSelectSuperArt = async (art: SuperArt) => {
     if(!firestore || !user || !draftPicks || !roomData || !roomRef) return;
     const myPick = draftPicks.find(p => p.pickedBy === user.uid);
-    if (!myPick || !myPick.id) {
-      toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje."});
-      return;
-    }
+    if (!myPick || !myPick.id) { toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje."}); return; }
     const pickRef = doc(firestore, `rooms/${roomId}/picks`, myPick.id);
     await updateDocumentNonBlocking(pickRef, { superArtId: art.id });
     toast({title: '¡Super Art Confirmado!'});
     
-    // Check if all players have selected a super art
-    const allPicksNowHaveSuperArt = draftPicks.every(p => p.superArtId || p.id === myPick.id);
-
-    if (allPicksNowHaveSuperArt) {
-        updateDocumentNonBlocking(roomRef, { phase: 'REVEAL' });
-        dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
+    const allPlayersPicked = players.filter(p => p.team !== 'spectator').length === draftPicks.length;
+    if (allPlayersPicked) {
+        const allPicksNowHaveSuperArt = draftPicks.every(p => p.superArtId || p.id === myPick.id);
+        if (allPicksNowHaveSuperArt) {
+            updateDocumentNonBlocking(roomRef, { phase: 'REVEAL' });
+            dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
+        }
     }
   }
 
@@ -372,7 +298,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
     }
   }
   
-  if (isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading || areCharactersLoading || areSuperArtsLoading) {
+  if (allDataLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col">
         <PageHeader />
@@ -398,7 +324,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   const team1Picks = draftPicks?.filter(p => p.team === 'team1') || [];
   const team2Picks = draftPicks?.filter(p => p.team === 'team2') || [];
-  const bannedCharacterIds = draftPicks?.map(p => p.id) || [];
+  const bannedCharacterIds = draftPicks?.map(p => p.characterId) || [];
   
   const getPhaseText = () => {
     if (!roomData) return '';

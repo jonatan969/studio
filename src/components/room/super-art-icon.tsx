@@ -1,4 +1,4 @@
-import { SuperArt } from "@/lib/game-data"
+import { SuperArt } from "@/lib/types"
 
 interface SuperArtIconProps {
     art: SuperArt;

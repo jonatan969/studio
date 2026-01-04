@@ -12,8 +12,8 @@ export interface Character {
     name: string;
     role: string;
     image: string;
-    hint: string;
-    description: string;
+    hint?: string;
+    description?: string;
 }
 
 export interface SuperArt {
@@ -54,9 +54,14 @@ export interface RoomPlayer {
     isReady: boolean;
 }
 
-export interface DraftPick extends Omit<Character, 'id'> {
+export interface DraftPick {
     id: string; // The doc ID from firestore
-    characterId: string; // The original character ID from game-data
+    characterId: string; // The original character ID
+    name: string;
+    role: string;
+    image: string;
+    hint?: string;
+    description?: string;
     pickedBy: string; // uid of player
     nickname: string; // nickname of player who picked
     team: 'team1' | 'team2';

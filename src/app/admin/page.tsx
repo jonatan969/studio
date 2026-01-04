@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { PageHeader } from '@/components/page-header';
 import { Loader2, PlusCircle, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 
 const superArtSchema = z.object({
-    id: z.string().optional(), // Keep track of existing art
+    id: z.string().optional(),
     name: z.string().min(1, "El nombre es obligatorio"),
     description: z.string().min(1, "La descripción es obligatoria"),
     color: z.enum(["yellow", "red", "blue"]),
@@ -93,7 +93,7 @@ export default function AdminPage() {
                 hint: character.hint || '',
                 superArts: relatedSuperArts.length === 3 
                   ? relatedSuperArts.map(sa => ({ ...sa })) 
-                  : [ // Default structure if data is inconsistent
+                  : [
                     { name: '', description: '', color: 'red', roman: 'I' },
                     { name: '', description: '', color: 'yellow', roman: 'II' },
                     { name: '', description: '', color: 'blue', roman: 'III' },
@@ -122,10 +122,8 @@ export default function AdminPage() {
 
         try {
             const batch = writeBatch(firestore);
-
-            const charRef = editingCharacter 
-              ? doc(firestore, 'characters', editingCharacter.id) 
-              : doc(collection(firestore, 'characters'));
+            const charId = editingCharacter ? editingCharacter.id : doc(collection(firestore, 'characters')).id;
+            const charRef = doc(firestore, 'characters', charId);
             
             const characterData: Omit<Character, 'id'> = {
                 name: data.name,
@@ -135,12 +133,8 @@ export default function AdminPage() {
                 hint: data.hint || '',
             };
             
-            // Set or update character
-            batch.set(charRef, characterData, { merge: true });
+            batch.set(charRef, characterData);
             
-            const characterId = charRef.id;
-
-            // Delete old super arts if editing
             if (editingCharacter && superArts) {
                 const oldSuperArts = superArts.filter(sa => sa.characterId === editingCharacter.id);
                 for (const art of oldSuperArts) {
@@ -148,15 +142,13 @@ export default function AdminPage() {
                 }
             }
             
-            // Create/update new super arts
             for (const artData of data.superArts) {
-                // If editing an existing art, use its ID. Otherwise, create a new one.
-                const artRef = artData.id 
-                  ? doc(firestore, 'super_arts', artData.id)
-                  : doc(collection(firestore, 'super_arts'));
-
-                const { id, ...restOfArtData } = artData; // Exclude form-only 'id'
-                batch.set(artRef, { ...restOfArtData, characterId: characterId });
+                const artRef = doc(collection(firestore, 'super_arts'));
+                const newArtData: Omit<SuperArt, 'id'> = {
+                    ...artData,
+                    characterId: charId,
+                }
+                batch.set(artRef, newArtData);
             }
 
             await batch.commit();
@@ -177,25 +169,19 @@ export default function AdminPage() {
 
         try {
             const batch = writeBatch(firestore);
-            
-            // Mark character for deletion
             batch.delete(doc(firestore, 'characters', characterId));
-
-            // Mark associated super arts for deletion
             const artsToDelete = superArts.filter(sa => sa.characterId === characterId);
             for (const art of artsToDelete) {
                 batch.delete(doc(firestore, 'super_arts', art.id));
             }
-            
             await batch.commit();
-            
             toast({ title: 'Personaje Eliminado' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error al Eliminar', description: error.message });
         }
     }
 
-    if (isUserLoading || !user || user.role !== 'admin') {
+    if (isUserLoading || !user || user.role !== 'admin' || isLoadingCharacters || isLoadingSuperArts) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -205,7 +191,7 @@ export default function AdminPage() {
     
     const getCharacterSuperArts = (characterId: string) => {
         if (!superArts) return [];
-        return superArts.filter(sa => sa.characterId === characterId);
+        return superArts.filter(sa => sa.characterId === characterId).sort((a,b) => a.roman.localeCompare(b.roman));
     };
 
     return (

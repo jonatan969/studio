@@ -5,14 +5,6 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-
-    function isRoomAdmin(roomId) {
-      return get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
-    }
-
-    function isParticipant(roomId) {
-        return exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
-    }
     
     function isAdmin() {
       // Check if the user document exists and has the admin role.
@@ -28,35 +20,33 @@ service cloud.firestore {
     }
 
     match /characters/{characterId} {
-      // Allow anyone to read character data, but only admins to write.
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
     match /super_arts/{superArtId} {
-      // Allow anyone to read super art data, but only admins to write.
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
     match /rooms/{roomId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.adminId == request.auth.uid;
-      allow update: if request.auth != null && (isRoomAdmin(roomId) || isAdmin());
-      allow delete: if request.auth != null && (isRoomAdmin(roomId) || isAdmin());
+      allow update: if request.auth != null && (get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && (get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid || isAdmin());
 
       match /players/{userId} {
         allow read: if true;
         allow create: if isOwner(userId);
-        allow update: if isOwner(userId) || isRoomAdmin(roomId);
-        allow delete: if isOwner(userId) || isRoomAdmin(roomId);
+        allow update: if isOwner(userId) || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
+        allow delete: if isOwner(userId) || get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
 
       match /picks/{pickId} {
-        allow read: if isParticipant(roomId);
-        allow create: if isParticipant(roomId);
-        allow update: if isParticipant(roomId);
-        allow delete: if isRoomAdmin(roomId);
+        allow read: if exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        allow create: if exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        allow update: if exists(/databases/$(database)/documents/rooms/$(roomId)/players/$(request.auth.uid));
+        allow delete: if get(/databases/$(database)/documents/rooms/$(roomId)).data.adminId == request.auth.uid;
       }
     }
   }
