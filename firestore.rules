@@ -1,35 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Default deny all
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow users to manage their own profile
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth.uid == userId;
-    }
-
-    // GAME DATA: Any authenticated user can read. Only admins can write.
+    // GAME DATA: Allow any authenticated user to read. Only admins can write.
     match /game_data/{docId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
-    // ROOMS: Allow any authenticated user to read/create rooms.
-    // Only the admin can update or delete the main room document.
-    match /rooms/{roomId} {
-      allow read, create: if request.auth != null;
-      allow update, delete: if resource.data.adminId == request.auth.uid;
+
+    // USERS: Users can read all profiles, but only write to their own.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
     }
 
-    // PLAYERS: Allow players to join/leave rooms and update their own status
-    match /rooms/{roomId}/players/{userId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth.uid == userId;
+    // ROOMS:
+    match /rooms/{roomId} {
+      // Any authenticated user can read the main room document and create new rooms.
+      allow read, create: if request.auth != null;
+      
+      // Only the original admin of the room can update or delete the main room document.
+      allow update, delete: if request.auth != null && resource.data.adminId == request.auth.uid;
+      
+      // PLAYERS SUBCOLLECTION:
+      // Allow any authenticated user to read the list of players.
+      // Allow a user to create, update, or delete their OWN player document within a room.
+      match /players/{userId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == userId;
+      }
     }
   }
 }
