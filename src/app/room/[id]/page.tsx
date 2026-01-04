@@ -14,7 +14,7 @@ import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-rea
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
+import { Room, RoomPlayer, DraftPick, Character, SuperArt, GameData } from '@/lib/types';
 import { doc, deleteDoc, writeBatch, collection, CollectionReference, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
-import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { deleteSubcollection } from '@/lib/utils';
 import { CharacterGrid } from '@/components/room/character-grid';
@@ -65,12 +64,15 @@ export default function RoomPage() {
   const playersRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'players') as CollectionReference<RoomPlayer> : null, [firestore, roomId]);
   const { data: players, isLoading: arePlayersLoading } = useCollection<RoomPlayer>(playersRef);
   
-  const characters = CHARACTERS;
-  const superArts = SUPER_ARTS;
+  const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
+  const { data: gameData, isLoading: isGameDataLoading } = useDoc<GameData>(gameDataRef);
+
+  const characters = gameData?.characters || [];
+  const superArts = gameData?.super_arts || [];
 
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading;
+  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || isGameDataLoading;
 
   const cleanupRoom = useCallback(async () => {
     if (!firestore || !roomId || !roomRef) return;
@@ -84,11 +86,17 @@ export default function RoomPage() {
 
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !roomData || !firestore) return;
+
+    // Admin leaving cancels the room
+    if (user.uid === roomData.adminId && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
+        await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
+    } else {
+        const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
+        await deleteDocumentNonBlocking(playerDocRef);
+    }
     
-    const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
-    await deleteDocumentNonBlocking(playerDocRef);
     router.push('/dashboard');
-  }, [user, roomData, firestore, router, roomId]);
+  }, [user, roomData, firestore, router, roomId, roomRef]);
 
   // Main timer effect driven by turnEndsAt
   React.useEffect(() => {
@@ -123,7 +131,7 @@ export default function RoomPage() {
         isReady: false,
     };
     const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
-    setDocumentNonBlocking(playerDocRef, newPlayer, { merge: true });
+    setDocumentNonBlocking(playerDocRef, newPlayer);
     setJoinDialogOpen(false);
     toast({title: `Te uniste como ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
   };
@@ -141,7 +149,7 @@ export default function RoomPage() {
       if (allDataLoading || !roomData || !roomRef || !players) return;
       if (user?.uid !== roomData?.adminId) return; // Only admin drives state changes
 
-      // Rule: If room becomes empty, cancel it
+      // Rule: If room becomes empty (and not already finished/canceled), cancel it
       if (players.length === 0 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
         updateDocumentNonBlocking(roomRef, { phase: 'CANCELED', turnEndsAt: null });
         return;
@@ -182,6 +190,7 @@ export default function RoomPage() {
                     
                     for(let i = 0; i < picksToAutoSelect; i++) {
                       const playerToPick = playersOnTeamWhoHaventPicked[i];
+                      // Note: preselection auto-pick is handled client-side. This is the final fallback.
                       const randomCharacter = availableCharacters[i];
 
                       if (!playerToPick || !randomCharacter) continue;
@@ -249,6 +258,13 @@ export default function RoomPage() {
          }
     }
   }, [roomData, user, roomRef, allDataLoading]);
+
+    // Client-side auto-pick from preselection
+    React.useEffect(() => {
+        if (timeLeft <= 0 && roomData?.phase === 'DRAFTING' && preselectedCharacter && canPick) {
+            handlePickCharacter(preselectedCharacter);
+        }
+    }, [timeLeft, roomData?.phase, preselectedCharacter]);
 
   const handlePickCharacter = async (character: Character) => {
     if (allDataLoading || !user || !players || !roomData?.picks || !firestore || !userPlayerInfo || !roomData?.pickOrder || roomData.turn === undefined || !roomRef || !roomData) return;
@@ -521,7 +537,7 @@ export default function RoomPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Cancelado</AlertDialogTitle>
                     <AlertDialogDescription>
-                        El draft ha sido cancelado porque la sala se quedó vacía. Serás devuelto al lobby.
+                        El draft ha sido cancelado porque la sala se quedó vacía o el admin la cerró. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

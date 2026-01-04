@@ -26,6 +26,11 @@ export interface SuperArt {
   roman: string;
 }
 
+export interface GameData {
+  characters: Character[];
+  super_arts: SuperArt[];
+}
+
 export interface RoomPlayer {
     uid: string;
     nickname: string;
