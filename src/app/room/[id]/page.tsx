@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useReducer, useCallback, useMemo, useEffect, useState } from 'react';
+import { useReducer, useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
@@ -91,7 +91,7 @@ export default function RoomPage() {
   }, [user, roomData, firestore, router, roomId]);
 
   // Main timer effect driven by turnEndsAt
-  useEffect(() => {
+  React.useEffect(() => {
     const calculateTimeLeft = () => {
       if (roomData?.turnEndsAt) {
         const now = Date.now();
@@ -107,7 +107,7 @@ export default function RoomPage() {
     return () => clearInterval(interval);
   }, [roomData?.turnEndsAt]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!allDataLoading && roomData && user && !userPlayerInfo) {
       setJoinDialogOpen(true);
     }
@@ -137,7 +137,7 @@ export default function RoomPage() {
   };
 
   // Main Game State Machine (driven by admin)
-  useEffect(() => {
+  React.useEffect(() => {
       if (allDataLoading || !roomData || !roomRef || !players) return;
       if (user?.uid !== roomData?.adminId) return; // Only admin drives state changes
 
@@ -222,7 +222,7 @@ export default function RoomPage() {
   }, [roomData, user, players, roomRef, firestore, router, characters, allDataLoading, cleanupRoom, timeLeft]);
 
   // Client-side turn advancement logic
-  useEffect(() => {
+  React.useEffect(() => {
     if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !roomData.picks || !roomData.pickOrder || user?.uid !== roomData.adminId || roomData.turn === undefined) return;
 
     const picksMadeThisTurn = roomData.picks.filter(p => p.turn === roomData.turn).length;
@@ -265,6 +265,11 @@ export default function RoomPage() {
     
     if (picksMadeThisTurnByMyTeam >= picksAllowedThisTurn) {
         toast({ variant: 'destructive', title: "Tu equipo ya ha elegido el máximo para este turno." });
+        return;
+    }
+    
+    if (roomData.turn === undefined) {
+        toast({ variant: 'destructive', title: "El draft no ha comenzado.", description: "El número de turno no está definido." });
         return;
     }
 
