@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,11 +14,13 @@ service cloud.firestore {
 
     // Only admins can modify game data.
     match /characters/{characterId} {
+      allow read: if true;
       allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Only admins can modify game data.
     match /super_arts/{superArtId} {
+      allow read: if true;
       allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
