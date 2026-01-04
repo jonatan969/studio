@@ -27,7 +27,7 @@ export function JoinRoomDialog({ isOpen, onJoin, roomData, players }: JoinRoomDi
   
   const isTeam1Full = team1Count >= roomData.playersPerTeam;
   const isTeam2Full = team2Count >= roomData.playersPerTeam;
-  const areSpectatorsFull = spectatorCount >= roomData.spectatorLimit;
+  const areSpectatorsFull = roomData.spectatorLimit > 0 ? spectatorCount >= roomData.spectatorLimit : false;
   
   // Players can only join teams during the PREP phase. After that, it's spectators only.
   const canJoinAsPlayer = roomData.phase === 'PREP';

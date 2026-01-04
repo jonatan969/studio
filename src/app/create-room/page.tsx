@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import type { Room, RoomPlayer } from '@/lib/types';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),
@@ -79,7 +80,15 @@ export default function CreateRoomPage() {
         const newRoomRef = doc(collection(firestore, 'rooms'));
         const newRoomId = newRoomRef.id;
 
-        const roomData = {
+        const player: RoomPlayer = {
+            uid: user.uid,
+            nickname: user.displayName || 'Anón.',
+            photoURL: user.photoURL,
+            team: data.joinPreference,
+            isReady: false,
+        };
+
+        const roomData: Room = {
             id: newRoomId,
             name: data.roomName,
             adminId: user.uid,
@@ -89,21 +98,12 @@ export default function CreateRoomPage() {
             team2Logo: data.team2Logo,
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
-            playerCount: 1,
             phase: 'PREP',
+            players: [player],
+            picks: [],
         };
         
         await setDocumentNonBlocking(newRoomRef, roomData, {});
-
-        const playerRef = doc(firestore, `rooms/${newRoomId}/players`, user.uid);
-        const playerData = {
-            uid: user.uid,
-            nickname: user.displayName,
-            photoURL: user.photoURL,
-            team: data.joinPreference,
-            isReady: false,
-        };
-        await setDocumentNonBlocking(playerRef, playerData, {});
 
         toast({
           title: '¡Sala Creada!',

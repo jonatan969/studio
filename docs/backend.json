@@ -60,15 +60,22 @@
         "playersPerTeam": { "type": "number" },
         "spectatorLimit": { "type": "number" },
         "phase": { "type": "string", "enum": ["PREP", "COIN_FLIP", "DRAFTING", "SUPER_ART", "REVEAL", "FINISHED", "CANCELED"] },
-        "playerCount": { "type": "number" },
         "firstPicker": { "type": "string", "enum": ["team1", "team2"] },
         "currentPicker": { "type": "string", "enum": ["team1", "team2"] },
         "turn": { "type": "number" },
         "picksPerTurn": { "type": "number" },
         "timeLeft": { "type": "number" },
-        "maxTime": { "type": "number" }
+        "maxTime": { "type": "number" },
+        "players": {
+          "type": "array",
+          "items": { "$ref": "#/entities/RoomPlayer" }
+        },
+        "picks": {
+          "type": "array",
+          "items": { "$ref": "#/entities/DraftPick" }
+        }
       },
-      "required": [ "id", "name", "adminId", "team1Name", "team2Name", "team1Logo", "team2Logo", "playersPerTeam", "spectatorLimit", "phase", "playerCount" ]
+      "required": [ "id", "name", "adminId", "team1Name", "team2Name", "team1Logo", "team2Logo", "playersPerTeam", "spectatorLimit", "phase", "players" ]
     },
     "RoomPlayer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -114,15 +121,7 @@
     },
     "/rooms/{roomId}": {
       "schema": { "$ref": "#/entities/Room" },
-      "description": "Stores room data, including settings and real-time state."
-    },
-    "/rooms/{roomId}/players/{userId}": {
-      "schema": { "$ref": "#/entities/RoomPlayer" },
-      "description": "Stores participants (players and spectators) for each room."
-    },
-    "/rooms/{roomId}/picks/{pickId}": {
-      "schema": { "$ref": "#/entities/DraftPick" },
-      "description": "Stores character picks made during the draft for a room."
+      "description": "Stores room data, including settings, real-time state, and embedded player/pick arrays."
     }
   }
 }

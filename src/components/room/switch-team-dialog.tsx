@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Room, RoomPlayer } from "@/lib/types";
-import { Users, UserCheck, X } from "lucide-react";
+import { Users, UserCheck } from "lucide-react";
 
 interface SwitchTeamDialogProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ export function SwitchTeamDialog({ isOpen, onClose, onSwitchTeam, roomData, play
   
   const isTeam1Full = team1Count >= roomData.playersPerTeam;
   const isTeam2Full = team2Count >= roomData.playersPerTeam;
-  const areSpectatorsFull = spectatorCount >= roomData.spectatorLimit;
+  const areSpectatorsFull = roomData.spectatorLimit > 0 ? spectatorCount >= roomData.spectatorLimit : false;
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

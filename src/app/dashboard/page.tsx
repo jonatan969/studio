@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,7 +11,7 @@ import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Room } from '@/lib/types';
 
 
@@ -22,7 +22,11 @@ export default function DashboardPage() {
 
   const roomsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
-      return collection(firestore, 'rooms');
+      // We only want to show rooms that are not finished or canceled
+      return query(
+        collection(firestore, 'rooms'), 
+        where('phase', 'in', ['PREP', 'COIN_FLIP', 'DRAFTING', 'SUPER_ART', 'REVEAL'])
+      );
   }, [firestore]);
 
   const { data: rooms, isLoading: isLoadingRooms } = useCollection<Room>(roomsQuery);
@@ -110,6 +114,7 @@ export default function DashboardPage() {
           {rooms?.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
+             const playerCount = room.players?.filter(p => p.team !== 'spectator').length || 0;
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">
                 <CardHeader className="p-0">
@@ -130,7 +135,7 @@ export default function DashboardPage() {
                    <div className="p-4 sm:p-6 pb-0">
                      <CardTitle className="font-headline text-xl sm:text-2xl truncate">{room.name}</CardTitle>
                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {room.playerCount || 0} / {maxPlayers}</span>
+                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {playerCount} / {maxPlayers}</span>
                      </CardDescription>
                    </div>
                 </CardHeader>
