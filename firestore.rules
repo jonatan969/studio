@@ -24,6 +24,14 @@ service cloud.firestore {
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
+    
+    match /characters/{characterId} {
+      allow read: if isSignedIn();
+    }
+
+    match /super_arts/{superArtId} {
+      allow read: if isSignedIn();
+    }
 
     match /rooms/{roomId} {
       allow read: if true;
