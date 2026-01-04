@@ -2,7 +2,7 @@
 'use client';
 
 import { PageHeader } from '@/components/page-header';
-import { useEffect, useReducer, useState, useCallback, useMemo, use } from 'react';
+import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -15,7 +15,9 @@ import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-rea
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useCollection, useUser, useFirestore, useMemoFirebase, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
+import { Room, RoomPlayer, DraftPick } from '@/lib/types';
+import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
+import type { Character, SuperArt } from '@/lib/game-data';
 import { doc, collection, deleteDoc } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
@@ -40,9 +42,9 @@ function draftReducer(state: DraftState, action: {type: 'LOG', message: string})
   }
 }
 
-export default function RoomPage({ params }: { params: Promise<{ id: string }> }) {
+export default function RoomPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { id: roomId } = use(params);
+  const { id: roomId } = params;
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -56,19 +58,13 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const picksRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'picks') : null, [firestore, roomId]);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
 
-  const charactersRef = useMemoFirebase(() => firestore ? collection(firestore, 'characters') : null, [firestore]);
-  const { data: characters, isLoading: areCharactersLoading } = useCollection<Character>(charactersRef);
-
-  const superArtsRef = useMemoFirebase(() => firestore ? collection(firestore, 'super_arts') : null, [firestore]);
-  const { data: superArts, isLoading: areSuperArtsLoading } = useCollection<SuperArt>(superArtsRef);
-
   const [state, dispatch] = useReducer(draftReducer, { log: [] });
   const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
   const [isSwitchTeamDialogOpen, setSwitchTeamDialogOpen] = useState(false);
   
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  const allDataLoading = isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading || areCharactersLoading || areSuperArtsLoading;
+  const allDataLoading = isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading;
 
   useEffect(() => {
     if (user?.uid === roomData?.adminId && roomRef) {
@@ -132,7 +128,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   // Main Game State Machine (driven by admin)
   useEffect(() => {
-      if (allDataLoading || user?.uid !== roomData?.adminId || !roomRef || !players || !characters || !draftPicks) return;
+      if (allDataLoading || user?.uid !== roomData?.adminId || !roomRef || !players || !draftPicks) return;
 
       const team1Players = players.filter(p => p.team === 'team1').length;
       const team2Players = players.filter(p => p.team === 'team2').length;
@@ -162,8 +158,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                     if (!roomData.currentPicker || !draftPicks) break;
                     const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
                     const playersWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(dp => dp.pickedBy === p.uid));
-                    const pickedCharacterIds = draftPicks.map(p => p.id) || [];
-                    const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
+                    const pickedCharacterIds = draftPicks.map(p => p.characterId) || [];
+                    const availableCharacters = CHARACTERS.filter(c => !pickedCharacterIds.includes(c.id));
                     
                     if (playersWhoHaventPicked.length > 0 && availableCharacters.length > 0 && firestore) {
                         const randomPlayer = playersWhoHaventPicked[Math.floor(Math.random() * playersWhoHaventPicked.length)];
@@ -206,7 +202,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
       return () => clearInterval(timer);
 
-  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, characters, allDataLoading]);
+  }, [roomData, players, draftPicks, user, roomRef, firestore, roomId, router, allDataLoading]);
 
   // Client-side turn advancement logic
   useEffect(() => {
@@ -341,7 +337,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   };
   
   const allFinalPicks = draftPicks?.map(pick => {
-    const superArt = superArts?.find(sa => sa.id === pick.superArtId);
+    const superArt = SUPER_ARTS?.find(sa => sa.id === pick.superArtId);
     return { ...pick, superArt: superArt || null };
   }) || [];
   
@@ -394,7 +390,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                 <div className="w-full h-full p-1 sm:p-2 border rounded-lg bg-card/50">
                     <ScrollArea className="h-[400px] sm:h-[500px] lg:h-full">
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-3 xl:grid-cols-4 gap-1 sm:gap-2 p-1">
-                            {(characters || []).map(char => (
+                            {CHARACTERS.map(char => (
                                 <CharacterSquare
                                     key={char.id}
                                     character={char}
@@ -406,15 +402,15 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                     </ScrollArea>
                 </div>
             )}
-             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && superArts && myPick && (
+             {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team !== 'spectator' && SUPER_ARTS && myPick && (
                 <SuperArtSelector 
-                  superArts={superArts.filter(sa => sa.characterId === myPick.characterId)} 
+                  superArts={SUPER_ARTS.filter(sa => sa.characterId === myPick.characterId)} 
                   onSelect={handleSelectSuperArt} 
                   isSubmitting={isMySuperArtSubmitted} 
                 />
             )}
-            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && superArts && (
-                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={superArts} />
+            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && SUPER_ARTS && (
+                <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} superArts={SUPER_ARTS} />
             )}
              {roomData.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
