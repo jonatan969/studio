@@ -297,6 +297,11 @@ export default function RoomPage() {
     const newPickRef = doc(collection(firestore, `rooms/${roomId}/picks`));
     const pickData: Omit<DraftPick, 'id'> = {
         characterId: character.id,
+        name: character.name,
+        role: character.role,
+        image: character.image,
+        hint: character.hint,
+        description: character.description,
         pickedBy: user.uid,
         nickname: userPlayerInfo.nickname,
         team: userPlayerInfo.team,
