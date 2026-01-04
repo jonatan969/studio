@@ -3,7 +3,7 @@
 
 import { PageHeader } from '@/components/page-header';
 import { ROLES } from '@/lib/game-data';
-import { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
+import { useEffect, useReducer, useState, useCallback, useMemo, use } from 'react';
 import { TeamDisplay } from '@/components/room/team-display';
 import { CharacterSquare } from '@/components/room/character-square';
 import { DraftTimer } from '@/components/room/draft-timer';
@@ -11,7 +11,6 @@ import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, ROOM_CLOSE_TIME, DRAFT_START_TIME
 import { SuperArtSelector } from '@/components/room/super-art-selector';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-react';
 import { CoinFlip } from '@/components/room/coin-flip';
@@ -44,9 +43,9 @@ function draftReducer(state: DraftState, action: {type: 'LOG', message: string})
   }
 }
 
-export default function RoomPage({ params }: { params: { id: string } }) {
+export default function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const roomId = params.id;
+  const { id: roomId } = use(params);
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -529,12 +528,12 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         </div>
       </main>
       {roomData.phase === 'REVEAL' && allFinalPicks.length > 0 && (
-         <DramaticReveal
-          team1Name={roomData.team1Name}
-          team2Name={roomData.team2Name}
-          allPicks={allFinalPicks}
-          onComplete={handleCompleteReveal}
-         />
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
+              <p className="text-xl sm:text-2xl md:text-3xl font-headline text-center italic text-slate-300 max-w-4xl">Las elecciones han sido tomadas. Los poderes han sido elegidos. ¡Que comience la batalla!</p>
+              <Button onClick={handleCompleteReveal} className="mt-8 animate-in fade-in delay-500 duration-500">
+                  Revelar Todo
+              </Button>
+          </div>
       )}
        <JoinRoomDialog 
          isOpen={isJoinDialogOpen}
@@ -578,3 +577,5 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
+    

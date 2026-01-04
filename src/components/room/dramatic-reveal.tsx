@@ -15,42 +15,8 @@ interface DramaticRevealProps {
   onComplete: () => void;
 }
 
-function TypingEffect({ text, onFinished }: { text: string; onFinished: () => void }) {
-  const [displayedText, setDisplayedText] = useState('');
-  
-  useEffect(() => {
-    if (text.length === 0) {
-        onFinished();
-        return;
-    };
-
-    setDisplayedText('');
-    let i = 0;
-    const intervalId = setInterval(() => {
-      setDisplayedText(prev => prev + text[i]);
-      i++;
-      if (i >= text.length) {
-        clearInterval(intervalId);
-        setTimeout(onFinished, 1000); // Wait a bit after typing finishes
-      }
-    }, 50);
-
-    return () => clearInterval(intervalId);
-  }, [text, onFinished]);
-
-  return <p className="text-xl sm:text-2xl md:text-3xl font-headline text-center italic text-slate-300 max-w-4xl">{displayedText}</p>;
-}
-
 export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: DramaticRevealProps) {
-  const [revealText, setRevealText] = useState('Las elecciones han sido tomadas. Los poderes han sido elegidos. ¡Que comience la batalla!');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(true);
   const [showAll, setShowAll] = useState(false);
-
-  useEffect(() => {
-    // No-op, we use static text now. Kept for structure.
-    setIsLoading(false);
-  }, []);
 
   if (showAll) {
     return (
@@ -93,18 +59,14 @@ export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: D
 
   return (
     <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
-      {isLoading ? (
-        <p className="text-2xl text-white">Forjando destinos...</p>
-      ) : (
         <div className="text-center animate-in fade-in-50 duration-1000">
-          <TypingEffect text={revealText} onFinished={() => setIsTyping(false)} />
-          {!isTyping && (
-             <Button onClick={() => setShowAll(true)} className="mt-8 animate-in fade-in delay-500 duration-500">
-                Revelar Todo
-            </Button>
-          )}
+          <p className="text-xl sm:text-2xl md:text-3xl font-headline text-center italic text-slate-300 max-w-4xl">Las elecciones han sido tomadas. Los poderes han sido elegidos. ¡Que comience la batalla!</p>
+          <Button onClick={() => setShowAll(true)} className="mt-8 animate-in fade-in delay-500 duration-500">
+              Revelar Todo
+          </Button>
         </div>
-      )}
     </div>
   );
 }
+
+    
