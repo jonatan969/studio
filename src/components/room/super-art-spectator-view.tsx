@@ -1,16 +1,34 @@
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DraftPick, SuperArt } from "@/lib/types";
+import { DraftPick, SuperArt, Character } from "@/lib/types";
 import { SuperArtIcon } from "./super-art-icon";
+import { SUPER_ARTS, CHARACTERS } from "@/lib/game-data";
+
+type CombinedPick = DraftPick & Partial<Character> & { superArt: SuperArt | null };
 
 interface SuperArtSpectatorViewProps {
-    allPicks: (DraftPick & { superArt: SuperArt | null })[];
+    allPicks: CombinedPick[];
     team1Name: string;
     team2Name: string;
-    superArts: SuperArt[];
 }
 
-export function SuperArtSpectatorView({ allPicks, team1Name, team2Name, superArts }: SuperArtSpectatorViewProps) {
+export function SuperArtSpectatorView({ allPicks, team1Name, team2Name }: SuperArtSpectatorViewProps) {
+
+    const getTeamPicks = (teamId: 'team1' | 'team2'): CombinedPick[] => {
+        return allPicks.filter(p => p.team === teamId).map(pick => {
+            const character = CHARACTERS.find(c => c.id === pick.characterId);
+            const superArt = pick.superArtId ? SUPER_ARTS.find(sa => sa.id === pick.superArtId) : null;
+            return {
+                ...pick,
+                name: character?.name || 'Unknown',
+                superArt,
+            };
+        });
+    };
+
+    const team1Picks = getTeamPicks('team1');
+    const team2Picks = getTeamPicks('team2');
+
     return (
         <Card className="w-full h-full flex flex-col items-center justify-center p-4">
             <CardHeader>
@@ -21,29 +39,23 @@ export function SuperArtSpectatorView({ allPicks, team1Name, team2Name, superArt
                 <div>
                     <h3 className="font-bold text-lg text-orange-400 mb-2">{team1Name}</h3>
                     <div className="space-y-2">
-                        {allPicks.filter(p => p.team === 'team1').map((pick) => {
-                            const superArt = pick.superArtId ? superArts.find(sa => sa.id === pick.superArtId) : null;
-                            return (
-                                <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
-                                    <span className="font-semibold">{pick.name}</span>
-                                    {superArt ? <SuperArtIcon art={superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
-                                </div>
-                            );
-                        })}
+                        {team1Picks.map((pick) => (
+                            <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
+                                <span className="font-semibold">{pick.name}</span>
+                                {pick.superArt ? <SuperArtIcon art={pick.superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
+                            </div>
+                        ))}
                     </div>
                 </div>
                  <div>
                     <h3 className="font-bold text-lg text-purple-400 mb-2">{team2Name}</h3>
                      <div className="space-y-2">
-                        {allPicks.filter(p => p.team === 'team2').map((pick) => {
-                           const superArt = pick.superArtId ? superArts.find(sa => sa.id === pick.superArtId) : null;
-                           return (
-                               <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
-                                   <span className="font-semibold">{pick.name}</span>
-                                   {superArt ? <SuperArtIcon art={superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
-                               </div>
-                           );
-                        })}
+                        {team2Picks.map((pick) => (
+                           <div key={pick.id} className="flex items-center justify-between bg-secondary p-2 rounded-md">
+                               <span className="font-semibold">{pick.name}</span>
+                               {pick.superArt ? <SuperArtIcon art={pick.superArt} /> : <span className="text-xs text-muted-foreground">Eligiendo...</span>}
+                           </div>
+                        ))}
                     </div>
                 </div>
             </CardContent>
