@@ -14,6 +14,25 @@ Welcome to your Versus Draft application! This document provides a high-level ov
 
 ---
 
+## 🚀 How to Deploy Your Application (100% Free)
+
+GitHub Pages is not suitable for this project because it's a dynamic Next.js application, not a static site. The best and easiest way to deploy your app for free is using **Firebase App Hosting**.
+
+Your project is already configured for this. Follow these steps:
+
+1.  **Go to your Firebase Console**: Navigate to your project on the [Firebase Console](https://console.firebase.google.com/).
+2.  **Find App Hosting**: In the left-hand menu, under "Build", click on **App Hosting**.
+3.  **Create a Backend**: Click "Create backend" and follow the on-screen prompts.
+4.  **Connect GitHub**:
+    *   You will be prompted to connect your GitHub account.
+    *   Select the repository for this project.
+    *   Choose your `prod` branch (or whichever branch you want to deploy).
+5.  **Deploy**: Firebase will automatically detect the `apphosting.yaml` file, build your Next.js application, and deploy it.
+
+Once the process is complete, Firebase will give you a public URL (like `your-app-name.web.app`) where you can access and test your fully functional draft system online. This is the recommended and most reliable method for this project.
+
+---
+
 ## Directory & File Breakdown
 
 Here are the most important folders and files you'll interact with:
