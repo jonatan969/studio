@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useReducer, useState, useCallback, useMemo } from 'react';
+import { useReducer, useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
 import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
+import { DramaticReveal } from '@/components/room/dramatic-reveal';
 
 type TeamId = 'team1' | 'team2';
 
@@ -460,8 +461,16 @@ export default function RoomPage() {
                   isSubmitting={isMySuperArtSubmitted} 
                 />
             )}
-            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && superArts && (
+            {roomData.phase === 'SUPER_ART' && userPlayerInfo?.team === 'spectator' && (
                 <SuperArtSpectatorView allPicks={allFinalPicks} team1Name={roomData.team1Name} team2Name={roomData.team2Name} />
+            )}
+             {roomData.phase === 'REVEAL' && allFinalPicks.length > 0 && (
+                <DramaticReveal
+                    team1Name={roomData.team1Name}
+                    team2Name={roomData.team2Name}
+                    allPicks={allFinalPicks}
+                    onComplete={handleCompleteReveal}
+                />
             )}
              {roomData.phase === 'PREP' && (
                  <Card className="w-full h-full flex flex-col items-center justify-center text-center p-4">
@@ -509,14 +518,6 @@ export default function RoomPage() {
              </Card>
         </div>
       </main>
-      {roomData.phase === 'REVEAL' && allFinalPicks.length > 0 && (
-          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8">
-              <p className="text-xl sm:text-2xl md:text-3xl font-headline text-center italic text-slate-300 max-w-4xl">Las elecciones han sido tomadas. Los poderes han sido elegidos. ¡Que comience la batalla!</p>
-              <Button onClick={handleCompleteReveal} className="mt-8 animate-in fade-in delay-500 duration-500">
-                  Revelar Todo
-              </Button>
-          </div>
-      )}
        <JoinRoomDialog 
          isOpen={isJoinDialogOpen}
          onJoin={handleJoin}
