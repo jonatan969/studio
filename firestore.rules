@@ -15,7 +15,9 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Check if the user document exists and has the admin role.
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
@@ -26,12 +28,14 @@ service cloud.firestore {
     }
 
     match /characters/{characterId} {
-      allow read: if request.auth != null;
+      // Allow anyone to read character data, but only admins to write.
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /super_arts/{superArtId} {
-      allow read: if request.auth != null;
+      // Allow anyone to read super art data, but only admins to write.
+      allow read: if true;
       allow write: if isAdmin();
     }
 
