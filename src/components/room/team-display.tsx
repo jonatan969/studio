@@ -20,7 +20,7 @@ interface TeamDisplayProps {
 
 export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPicking, maxPlayers }: TeamDisplayProps) {
   const teamColor = teamId === 'team1' ? 'border-orange-500' : 'border-purple-500';
-  const teamTextColor = teamId === 'team1' ? 'text-orange-500' : 'text-purple-500';
+  const teamTextColor = teamId === 'team1' ? 'text-orange-400' : 'text-purple-400';
 
   const getInitials = (name: string | null) => {
     if (!name) return '';
@@ -28,7 +28,7 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
   }
 
   return (
-    <Card className={cn('flex flex-col h-full transition-all duration-300 border-2 bg-card/50', isPicking ? teamColor : 'border-border/20', isPicking ? 'shadow-lg shadow-primary/20' : '')}>
+    <Card className={cn('flex flex-col h-full transition-all duration-300 border-2 bg-card/50', isPicking ? teamColor : 'border-transparent')}>
       <CardHeader className="flex flex-row items-center justify-between p-3 sm:p-4">
         <CardTitle className={cn('font-headline text-lg sm:text-xl truncate', teamTextColor)}>{teamName}</CardTitle>
         {teamLogo && <Image src={teamLogo} alt={`${teamName} logo`} width={32} height={32} className="rounded-md object-contain" />}
