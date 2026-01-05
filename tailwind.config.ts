@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['"IM Fell English"', 'serif'],
-        headline: ['Almendra', 'serif'],
+        body: ['Rajdhani', 'sans-serif'],
+        headline: ['Orbitron', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
