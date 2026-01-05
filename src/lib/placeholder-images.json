@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "hero-background",
-      "description": "Abstract futuristic purple and teal energy streams",
-      "imageUrl": "https://images.unsplash.com/photo-1748374969644-b749eecfcaad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxhYnN0cmFjdCUyMGZ1dHVyaXN0aWN8ZW58MHx8fHwxNzY3MDIyOTA4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "abstract futuristic"
+      "description": "KBA stream starting soon graphic",
+      "imageUrl": "https://media.discordapp.net/attachments/763207743016009759/1457538004326551674/PRIMER_EVENTO_KBA_START_STREAM.png?ex=695c5d8b&is=695b0c0b&hm=059007830141297e1a365779a792eb6b29200f6befead76d87102e9b0ae499a4&=&format=webp&quality=lossless&width=1519&height=856",
+      "imageHint": "esports event graphic"
     },
     {
       "id": "char-aether",
