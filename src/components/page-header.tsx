@@ -1,9 +1,8 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { VersusLogo } from '@/components/icons/logo';
+import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,14 +36,20 @@ export function PageHeader() {
       <div className="container flex h-16 items-center">
         <div className="mr-4 hidden md:flex">
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <VersusLogo className="h-8 w-8 text-primary" />
-            <span className="hidden font-bold sm:inline-block font-headline text-xl">KBA DRAFT</span>
+            <Image src="https://cdn.discordapp.com/attachments/763207743016009759/1457539983916142818/IconDraftSystem.png?ex=695c5f63&is=695b0de3&hm=35b93fbf8b71785c0118d7fdc963ebbacb2c9a867532d6d3ccc9f15b0e47f550&" alt="KBA Draft Logo" width={40} height={40} className="h-10 w-10 text-primary" />
+            <div className="flex flex-col">
+              <span className="font-bold font-headline text-sm leading-tight">KBA</span>
+              <span className="font-bold font-headline text-sm leading-tight">DRAFT</span>
+            </div>
           </Link>
         </div>
         <div className="flex w-full items-center justify-between md:justify-end">
           <Link href="/dashboard" className="flex items-center space-x-2 md:hidden">
-            <VersusLogo className="h-8 w-8 text-primary" />
-            <span className="font-bold font-headline text-lg">KBA DRAFT</span>
+             <Image src="https://cdn.discordapp.com/attachments/763207743016009759/1457539983916142818/IconDraftSystem.png?ex=695c5f63&is=695b0de3&hm=35b93fbf8b71785c0118d7fdc963ebbacb2c9a867532d6d3ccc9f15b0e47f550&" alt="KBA Draft Logo" width={32} height={32} className="h-8 w-8 text-primary" />
+             <div className="flex flex-col">
+              <span className="font-bold font-headline text-xs leading-tight">KBA</span>
+              <span className="font-bold font-headline text-xs leading-tight">DRAFT</span>
+            </div>
           </Link>
           <nav className="flex items-center space-x-1">
             {user && (
