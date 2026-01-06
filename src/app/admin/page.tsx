@@ -16,7 +16,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import type { Character, SuperArt } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -147,7 +147,8 @@ export default function AdminPage() {
         }
 
         try {
-            await updateDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts });
+            // Use setDoc with merge: true to create or update the document
+            await setDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts }, { merge: true });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
         } catch (error: any) {
@@ -157,11 +158,11 @@ export default function AdminPage() {
     };
     
     const handleDeleteCharacter = async (characterId: string) => {
-        if (!firestore || !gameDataRef) return;
+        if (!firestore || !gameDataRef || !gameData) return;
         const updatedCharacters = characters.filter(c => c.id !== characterId);
         const updatedSuperArts = superArts.filter(sa => sa.characterId !== characterId);
         try {
-            await updateDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts });
+            await setDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts }, { merge: true });
             toast({ title: 'Personaje eliminado' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
@@ -332,3 +333,5 @@ export default function AdminPage() {
         </div>
     );
 }
+
+    
