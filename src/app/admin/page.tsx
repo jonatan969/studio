@@ -111,10 +111,11 @@ export default function AdminPage() {
     };
 
     const onSubmit = async (data: CharacterFormData) => {
-        if (!firestore || !gameData) return;
+        if (!firestore || !gameDataRef) return;
 
-        let updatedCharacters = [...characters];
-        let updatedSuperArts = [...superArts];
+        let currentCharacters = gameData?.characters || [];
+        let currentSuperArts = gameData?.super_arts || [];
+
         const characterId = editingCharacter?.id || `char-${uuidv4()}`;
 
         const characterData: Character = {
@@ -124,36 +125,43 @@ export default function AdminPage() {
             image: data.image,
         };
         
-        const newSuperArts = data.superArts.map(sa => ({ ...sa, characterId }));
+        const newSuperArts = data.superArts.map((sa, index) => ({ 
+            ...sa, 
+            id: sa.id || `sa-${uuidv4()}`, // Ensure ID exists
+            characterId 
+        }));
         
-        if (editingCharacter) { // Editing existing character
-            const charIndex = updatedCharacters.findIndex(c => c.id === characterId);
-            if (charIndex > -1) {
-                updatedCharacters[charIndex] = characterData;
-            }
-            updatedSuperArts = updatedSuperArts.filter(sa => sa.characterId !== characterId);
-            updatedSuperArts.push(...newSuperArts);
+        let updatedCharacters;
+        let updatedSuperArts;
 
-        } else { // Adding new character
-            updatedCharacters.push(characterData);
+        if (editingCharacter) { // Editing existing character
+            updatedCharacters = currentCharacters.map(c => c.id === characterId ? characterData : c);
+            
+            // Remove old super arts of this character and add the new/updated ones
+            updatedSuperArts = currentSuperArts.filter(sa => sa.characterId !== characterId);
             updatedSuperArts.push(...newSuperArts);
+            
+        } else { // Adding new character
+            updatedCharacters = [...currentCharacters, characterData];
+            updatedSuperArts = [...currentSuperArts, ...newSuperArts];
         }
 
         try {
-            await updateDoc(gameDataRef!, { characters: updatedCharacters, super_arts: updatedSuperArts });
+            await updateDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
         } catch (error: any) {
+            console.error("Error saving character:", error);
             toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
         }
     };
     
     const handleDeleteCharacter = async (characterId: string) => {
-        if (!firestore || !gameData) return;
+        if (!firestore || !gameDataRef) return;
         const updatedCharacters = characters.filter(c => c.id !== characterId);
         const updatedSuperArts = superArts.filter(sa => sa.characterId !== characterId);
         try {
-            await updateDoc(gameDataRef!, { characters: updatedCharacters, super_arts: updatedSuperArts });
+            await updateDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts });
             toast({ title: 'Personaje eliminado' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
