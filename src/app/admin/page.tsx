@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -50,6 +51,8 @@ export default function AdminPage() {
 
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
+    const [imageVersion, setImageVersion] = useState(Date.now());
+
 
     const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
     const { data: gameData, isLoading: isGameDataLoading } = useDoc<{ characters: Character[], super_arts: SuperArt[] }>(gameDataRef);
@@ -81,6 +84,7 @@ export default function AdminPage() {
 
     const handleOpenForm = (character: Character | null) => {
         setEditingCharacter(character);
+        setImageVersion(Date.now()); // Reset image version on form open
         if (character) {
             const characterSuperArts = superArts.filter(sa => sa.characterId === character.id).sort((a,b) => a.roman.localeCompare(b.roman));
             reset({
@@ -147,10 +151,10 @@ export default function AdminPage() {
         }
 
         try {
-            // Use setDoc with merge: true to create or update the document
             await setDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts }, { merge: true });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
+            setImageVersion(Date.now()); // Update image version to force re-fetch
         } catch (error: any) {
             console.error("Error saving character:", error);
             toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
@@ -206,7 +210,7 @@ export default function AdminPage() {
                                 <div className="space-y-6">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Nombre del Personaje</Label>
-                                        <Input id="name" {...register('name')} />
+                                        <Input id="name" {...register('name')} autoComplete="off" />
                                         {errors.name && <p className="text-destructive text-sm">{errors.name.message}</p>}
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -232,7 +236,7 @@ export default function AdminPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="image">URL de Imagen del Personaje</Label>
-                                            <Input id="image" {...register('image')} />
+                                            <Input id="image" {...register('image')} autoComplete="off" />
                                             {errors.image && <p className="text-destructive text-sm">{errors.image.message}</p>}
                                         </div>
                                     </div>
@@ -245,17 +249,17 @@ export default function AdminPage() {
                                             <h4 className="font-bold text-accent">Super Art {field.roman}</h4>
                                             <div className="space-y-2">
                                                 <Label htmlFor={`superArts.${index}.name`}>Título</Label>
-                                                <Input {...register(`superArts.${index}.name`)} />
+                                                <Input {...register(`superArts.${index}.name`)} autoComplete="off" />
                                                 {errors.superArts?.[index]?.name && <p className="text-destructive text-sm">{errors.superArts[index]?.name?.message}</p>}
                                             </div>
                                              <div className="space-y-2">
                                                 <Label htmlFor={`superArts.${index}.description`}>Descripción</Label>
-                                                <Input {...register(`superArts.${index}.description`)} />
+                                                <Input {...register(`superArts.${index}.description`)} autoComplete="off" />
                                                 {errors.superArts?.[index]?.description && <p className="text-destructive text-sm">{errors.superArts[index]?.description?.message}</p>}
                                             </div>
                                              <div className="space-y-2">
                                                 <Label htmlFor={`superArts.${index}.image`}>URL de Imagen</Label>
-                                                <Input {...register(`superArts.${index}.image`)} />
+                                                <Input {...register(`superArts.${index}.image`)} autoComplete="off" />
                                                 {errors.superArts?.[index]?.image && <p className="text-destructive text-sm">{errors.superArts[index]?.image?.message}</p>}
                                             </div>
                                         </div>
@@ -292,7 +296,7 @@ export default function AdminPage() {
                                     <AccordionItem value={character.id} key={character.id}>
                                         <AccordionTrigger>
                                             <div className="flex items-center gap-4 w-full">
-                                                <Image src={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
+                                                <Image src={`${character.image}?v=${imageVersion}`} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
                                                 <span className="font-bold">{character.name}</span>
                                                 <span className="text-sm text-muted-foreground">({character.role})</span>
                                             </div>
@@ -310,7 +314,7 @@ export default function AdminPage() {
                                                     {getCharacterSuperArts(character.id).map(art => (
                                                         <div key={art.id} className="p-3 border rounded-md space-y-2 bg-secondary/50">
                                                             <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
-                                                                <Image src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
+                                                                <Image src={`${art.image}?v=${imageVersion}`} alt={art.name} fill className="object-cover img-pixelated" />
                                                             </div>
                                                             <p className="font-mono font-bold text-accent">Super Art {art.roman}: {art.name}</p>
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
@@ -333,3 +337,5 @@ export default function AdminPage() {
         </div>
     );
 }
+
+    
