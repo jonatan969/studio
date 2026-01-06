@@ -11,15 +11,14 @@ import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, type CollectionReference } from 'firebase/firestore';
-import type { Room, RoomPlayer } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
+import type { Room } from '@/lib/types';
 
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const [roomsWithPlayerCount, setRoomsWithPlayerCount] = useState<(Room & {playerCount: number})[]>([]);
 
   const roomsQuery = useMemoFirebase(() => {
       if (!firestore) return null;
@@ -37,22 +36,6 @@ export default function DashboardPage() {
       router.push('/');
     }
   }, [user, isUserLoading, router]);
-
-  useEffect(() => {
-    if (rooms && firestore) {
-      const fetchPlayerCounts = async () => {
-        const roomsWithCounts = await Promise.all(
-          rooms.map(async (room) => {
-            const playersColRef = collection(firestore, 'rooms', room.id, 'players') as CollectionReference<RoomPlayer>;
-            const playersSnapshot = await getDocs(query(playersColRef, where('team', '!=', 'spectator')));
-            return { ...room, playerCount: playersSnapshot.size };
-          })
-        );
-        setRoomsWithPlayerCount(roomsWithCounts);
-      };
-      fetchPlayerCounts();
-    }
-  }, [rooms, firestore]);
 
   if (isUserLoading || !user) {
     return (
@@ -120,7 +103,7 @@ export default function DashboardPage() {
             </div>
         )}
 
-        {!isLoadingRooms && roomsWithPlayerCount.length === 0 && (
+        {!isLoadingRooms && rooms?.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
                 <h2 className="text-2xl font-semibold">No hay salas disponibles</h2>
                 <p className="text-muted-foreground mt-2">¿Por qué no creas una y empiezas la batalla?</p>
@@ -128,9 +111,10 @@ export default function DashboardPage() {
         )}
 
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {roomsWithPlayerCount?.map((room) => {
+          {rooms?.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
+             const playerCount = room.players.filter(p => p.team !== 'spectator').length;
              
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">
@@ -152,7 +136,7 @@ export default function DashboardPage() {
                    <div className="p-4 sm:p-6 pb-0">
                      <CardTitle className="font-headline text-xl sm:text-2xl truncate">{room.name}</CardTitle>
                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {room.playerCount} / {maxPlayers}</span>
+                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {playerCount} / {maxPlayers}</span>
                      </CardDescription>
                    </div>
                 </CardHeader>

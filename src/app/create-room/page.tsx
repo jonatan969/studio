@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
 import { getPickOrder } from '@/lib/constants';
 
@@ -99,14 +99,11 @@ export default function CreateRoomPage() {
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
             phase: 'PREP',
+            players: [player], // Add creator to players array
+            picks: [], // Initialize picks array
         };
         
-        const playerDocRef = doc(firestore, 'rooms', newRoomId, 'players', user.uid);
-        
-        const batch = writeBatch(firestore);
-        batch.set(newRoomRef, roomData);
-        batch.set(playerDocRef, player);
-        await batch.commit();
+        await setDoc(newRoomRef, roomData);
 
         toast({
           title: '¡Sala Creada!',
