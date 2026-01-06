@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
 import { getPickOrder } from '@/lib/constants';
 
@@ -83,7 +83,7 @@ export default function CreateRoomPage() {
         const newRoomRef = doc(collection(firestore, 'rooms'));
         const newRoomId = newRoomRef.id;
 
-        const roomData: Omit<Room, 'id'> = {
+        const roomData: Room = {
             name: data.roomName,
             adminId: user.uid,
             team1Name: data.team1Name,

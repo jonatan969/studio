@@ -2,40 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Reglas para la colección 'users'
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth.uid == userId;
     }
 
-    // Reglas para la colección 'rooms'
     match /rooms/{roomId} {
-      // Cualquiera autenticado puede leer datos de una sala o la lista de salas
-      allow read: if request.auth != null;
-      
-      // Cualquiera autenticado puede crear una nueva sala
-      allow create: if request.auth != null;
-
-      // Cualquiera autenticado puede actualizar los datos principales de la sala (fase, turno, etc.)
+      allow read, create: if request.auth != null;
+      // Any authenticated user can update the room's core data (phase, turn, etc.)
+      // This is simpler and avoids the admin being a bottleneck.
       allow update: if request.auth != null;
 
-      // Reglas para la subcolección de jugadores
+      // Rules for the 'players' subcollection
       match /players/{userId} {
-        allow read: if request.auth != null;
-
-        // Un usuario solo puede crear, actualizar o borrar su propio documento en la subcolección de jugadores.
-        // Esto le permite unirse a la sala, cambiar de equipo o salir.
-        allow write: if request.auth.uid == userId;
+        // Any authenticated user can see who is in the room.
+        allow list, read: if request.auth != null;
+        
+        // A user can only create, update, or delete their OWN player document.
+        // The document ID {userId} must match their own auth UID.
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
-
-      // Reglas para la subcolección de selecciones
+      
+      // Rules for the 'picks' subcollection
       match /picks/{userId} {
-        // Cualquiera autenticado puede leer las selecciones individuales.
-        allow read: if request.auth != null;
+         // Any authenticated user can see the picks.
+        allow list, read: if request.auth != null;
 
-        // Un usuario solo puede crear o actualizar su propia selección.
-        // El ID del documento debe ser su UID.
-        allow create, update: if request.auth.uid == userId;
+        // A user can only create or update their own pick document.
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
     }
   }
