@@ -23,15 +23,20 @@ export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
             setIsFlipping(false);
         }, 3000); // Animation duration
 
-        const completeTimeout = setTimeout(() => {
-            onComplete(winner);
-        }, 5000); // Total time before moving on
-
         return () => {
             clearTimeout(flipTimeout);
-            clearTimeout(completeTimeout);
         };
-    }, [onComplete]);
+    }, []); // Removed onComplete from dependencies to control flow manually
+
+    useEffect(() => {
+        if (result) {
+            // Wait 2 seconds after showing the result before moving on
+            const completeTimeout = setTimeout(() => {
+                onComplete(result);
+            }, 2000);
+            return () => clearTimeout(completeTimeout);
+        }
+    }, [result, onComplete]);
 
     return (
         <div className="flex flex-col items-center justify-center h-full gap-4 p-4 animate-in fade-in-50 duration-500">
