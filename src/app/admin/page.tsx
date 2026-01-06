@@ -51,7 +51,6 @@ export default function AdminPage() {
 
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
-    const [imageVersion, setImageVersion] = useState(Date.now());
 
 
     const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
@@ -84,7 +83,6 @@ export default function AdminPage() {
 
     const handleOpenForm = (character: Character | null) => {
         setEditingCharacter(character);
-        setImageVersion(Date.now()); // Reset image version on form open
         if (character) {
             const characterSuperArts = superArts.filter(sa => sa.characterId === character.id).sort((a,b) => a.roman.localeCompare(b.roman));
             reset({
@@ -154,7 +152,6 @@ export default function AdminPage() {
             await setDoc(gameDataRef, { characters: updatedCharacters, super_arts: updatedSuperArts }, { merge: true });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
-            setImageVersion(Date.now()); // Update image version to force re-fetch
         } catch (error: any) {
             console.error("Error saving character:", error);
             toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
@@ -296,7 +293,7 @@ export default function AdminPage() {
                                     <AccordionItem value={character.id} key={character.id}>
                                         <AccordionTrigger>
                                             <div className="flex items-center gap-4 w-full">
-                                                <Image src={`${character.image}?v=${imageVersion}`} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
+                                                <Image src={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
                                                 <span className="font-bold">{character.name}</span>
                                                 <span className="text-sm text-muted-foreground">({character.role})</span>
                                             </div>
@@ -314,7 +311,7 @@ export default function AdminPage() {
                                                     {getCharacterSuperArts(character.id).map(art => (
                                                         <div key={art.id} className="p-3 border rounded-md space-y-2 bg-secondary/50">
                                                             <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
-                                                                <Image src={`${art.image}?v=${imageVersion}`} alt={art.name} fill className="object-cover img-pixelated" />
+                                                                <Image src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
                                                             </div>
                                                             <p className="font-mono font-bold text-accent">Super Art {art.roman}: {art.name}</p>
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
