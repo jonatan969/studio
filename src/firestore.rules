@@ -35,9 +35,9 @@ service cloud.firestore {
       // PICKS SUBCOLLECTION:
       // Anyone authenticated can read the picks.
       // A user can create or update their own pick document (using their UID).
-      match /picks/{userId} {
+      match /picks/{pickId} {
          allow read: if request.auth != null;
-         allow create, update: if request.auth.uid == userId;
+         allow create, update: if request.auth.uid == pickId;
       }
     }
   }
