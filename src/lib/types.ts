@@ -30,7 +30,7 @@ export interface GameData {
 }
 
 export interface RoomPlayer {
-    uid: string;
+    uid: string; // Document ID is the user's UID
     nickname: string;
     photoURL: string | null;
     team: 'team1' | 'team2' | 'spectator';
@@ -38,7 +38,7 @@ export interface RoomPlayer {
 }
 
 export interface DraftPick {
-    id: string; // ID will be the player's UID
+    id: string; // Document ID is the player's UID
     characterId: string;
     pickedBy: string; // uid of player
     nickname: string; // nickname of player who picked
@@ -59,8 +59,7 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
-    players: RoomPlayer[];
-    picks: DraftPick[];
+    // players and picks are now subcollections
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
     currentPicker?: 'team1' | 'team2' | null;

@@ -2,20 +2,53 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { PageHeader } from '@/components/page-header';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PlusCircle, Save, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
-import type { Character, SuperArt } from '@/lib/types';
 import Image from 'next/image';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileCode } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { collection, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import type { Character, SuperArt } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+
+const characterSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  role: z.string().min(1, 'El rol es obligatorio'),
+  image: z.string().url('La URL de la imagen no es válida'),
+  hint: z.string().optional(),
+  description: z.string().optional(),
+});
+
+type CharacterFormData = z.infer<typeof characterSchema>;
 
 export default function AdminPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const [isFormOpen, setFormOpen] = useState(false);
+    const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
+
+    const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
+    const { data: gameData, isLoading: isGameDataLoading } = useDoc<{ characters: Character[], super_arts: SuperArt[] }>(gameDataRef);
+    
+    const characters = gameData?.characters || [];
+    const superArts = gameData?.super_arts || [];
+
+    const { register, handleSubmit, reset, formState: { errors } } = useForm<CharacterFormData>({
+        resolver: zodResolver(characterSchema),
+    });
 
     useEffect(() => {
         if (!isUserLoading && (!user || user.role !== 'admin')) {
@@ -23,7 +56,46 @@ export default function AdminPage() {
         }
     }, [user, isUserLoading, router]);
 
-    if (isUserLoading || !user || user.role !== 'admin') {
+    const handleOpenForm = (character: Character | null) => {
+        setEditingCharacter(character);
+        reset(character || { id: '', name: '', role: '', image: '', hint: '', description: '' });
+        setFormOpen(true);
+    };
+
+    const onSubmit = async (data: CharacterFormData) => {
+        if (!firestore || !gameData) return;
+
+        const updatedCharacters = [...characters];
+        if (editingCharacter) { // Editing existing character
+            const index = updatedCharacters.findIndex(c => c.id === editingCharacter.id);
+            if (index > -1) {
+                updatedCharacters[index] = { ...editingCharacter, ...data };
+            }
+        } else { // Adding new character
+            updatedCharacters.push({ ...data, id: `char-${uuidv4()}` });
+        }
+
+        try {
+            await updateDoc(gameDataRef, { characters: updatedCharacters });
+            toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
+            setFormOpen(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error al guardar', description: error.message });
+        }
+    };
+    
+    const handleDeleteCharacter = async (characterId: string) => {
+        if (!firestore || !gameData) return;
+        const updatedCharacters = characters.filter(c => c.id !== characterId);
+        try {
+            await updateDoc(gameDataRef, { characters: updatedCharacters });
+            toast({ title: 'Personaje eliminado' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
+        }
+    };
+
+    if (isUserLoading || !user || user.role !== 'admin' || isGameDataLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -32,7 +104,7 @@ export default function AdminPage() {
     }
 
     const getCharacterSuperArts = (characterId: string) => {
-        return SUPER_ARTS.filter(sa => sa.characterId === characterId).sort((a,b) => a.roman.localeCompare(b.roman));
+        return superArts.filter(sa => sa.characterId === characterId).sort((a,b) => a.roman.localeCompare(b.roman));
     };
 
     return (
@@ -41,31 +113,70 @@ export default function AdminPage() {
             <main className="flex-1 container py-4 sm:py-8">
                 <div className="flex items-center justify-between mb-6 sm:mb-8">
                     <h1 className="font-headline text-3xl sm:text-4xl font-bold">Panel de Administración</h1>
+                    <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => handleOpenForm(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Añadir Personaje
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{editingCharacter ? 'Editar' : 'Añadir'} Personaje</DialogTitle>
+                                <DialogDescription>
+                                    Rellena los detalles del personaje.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Nombre</Label>
+                                    <Input id="name" {...register('name')} />
+                                    {errors.name && <p className="text-destructive text-sm">{errors.name.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="role">Rol</Label>
+                                    <Input id="role" {...register('role')} />
+                                     {errors.role && <p className="text-destructive text-sm">{errors.role.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="image">URL de Imagen</Label>
+                                    <Input id="image" {...register('image')} />
+                                    {errors.image && <p className="text-destructive text-sm">{errors.image.message}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="hint">Pista de IA (ej. "cyborg soldier")</Label>
+                                    <Input id="hint" {...register('hint')} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="description">Descripción</Label>
+                                    <Input id="description" {...register('description')} />
+                                </div>
+                                <DialogFooter>
+                                    <Button type="submit">
+                                        <Save className="mr-2 h-4 w-4" />
+                                        Guardar
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
-
-                <Alert className="mb-6">
-                    <FileCode className="h-4 w-4" />
-                    <AlertTitle>Modo de Solo Lectura</AlertTitle>
-                    <AlertDescription>
-                        Los datos del juego ahora se gestionan directamente en el código para garantizar la estabilidad. Para editar personajes o Super Arts, por favor modifica el archivo: <code className="font-mono bg-muted px-1 py-0.5 rounded-sm">src/lib/game-data.ts</code>.
-                    </AlertDescription>
-                </Alert>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Visualización de Personajes y Super Arts</CardTitle>
+                        <CardTitle>Gestión de Personajes y Super Arts</CardTitle>
                         <CardDescription>
-                            Aquí puedes ver todos los personajes y habilidades actualmente configurados en el juego.
+                            Aquí puedes ver, editar y eliminar los personajes y habilidades del juego.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {CHARACTERS.length === 0 ? (
+                        {characters.length === 0 ? (
                              <div className="flex items-center justify-center p-8">
-                                <p>No hay personajes definidos en <code className="font-mono">src/lib/game-data.ts</code>.</p>
+                                <p>No hay personajes definidos en la base de datos.</p>
                             </div>
                         ) : (
-                            <Accordion type="single" collapsible className="w-full" defaultValue={CHARACTERS[0]?.id}>
-                                {CHARACTERS.map(character => (
+                            <Accordion type="single" collapsible className="w-full" defaultValue={characters[0]?.id}>
+                                {characters.map(character => (
                                     <AccordionItem value={character.id} key={character.id}>
                                         <AccordionTrigger>
                                             <div className="flex items-center gap-4 w-full">
@@ -77,22 +188,11 @@ export default function AdminPage() {
                                         <AccordionContent>
                                             <div className="space-y-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <p className="font-bold">Nombre:</p>
-                                                        <p>{character.name}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold">Rol:</p>
-                                                        <p>{character.role}</p>
-                                                    </div>
-                                                    <div className="md:col-span-2">
-                                                        <p className="font-bold">URL de Imagen:</p>
-                                                        <p className="text-xs break-all">{character.image}</p>
-                                                    </div>
-                                                     <div className="md:col-span-2">
-                                                        <p className="font-bold">Pista de IA:</p>
-                                                        <p>{character.hint}</p>
-                                                    </div>
+                                                    <div><p className="font-bold">Nombre:</p><p>{character.name}</p></div>
+                                                    <div><p className="font-bold">Rol:</p><p>{character.role}</p></div>
+                                                    <div className="md:col-span-2"><p className="font-bold">URL de Imagen:</p><p className="text-xs break-all">{character.image}</p></div>
+                                                    <div className="md:col-span-2"><p className="font-bold">Pista de IA:</p><p>{character.hint}</p></div>
+                                                    <div className="md:col-span-2"><p className="font-bold">Descripción:</p><p>{character.description}</p></div>
                                                 </div>
 
                                                 <h4 className="font-semibold pt-4 border-t">Super Arts:</h4>
@@ -103,6 +203,10 @@ export default function AdminPage() {
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
                                                         </div>
                                                     ))}
+                                                </div>
+                                                <div className="flex gap-2 pt-4 border-t">
+                                                    <Button variant="outline" size="sm" onClick={() => handleOpenForm(character)}><Edit className="mr-2 h-3 w-3"/>Editar</Button>
+                                                    <Button variant="destructive" size="sm" onClick={() => handleDeleteCharacter(character.id)}><Trash2 className="mr-2 h-3 w-3"/>Eliminar</Button>
                                                 </div>
                                             </div>
                                         </AccordionContent>

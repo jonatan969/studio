@@ -96,6 +96,7 @@ export default function DashboardPage() {
 
         {isLoadingRooms && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                <Loader2 className="animate-spin h-8 w-8 text-primary mx-auto mb-4" />
                 <h2 className="text-2xl font-semibold">Buscando salas...</h2>
                 <p className="text-muted-foreground mt-2">Un momento por favor.</p>
             </div>
@@ -112,7 +113,10 @@ export default function DashboardPage() {
           {rooms?.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
-             const playerCount = (room.players || []).filter(p => p.team !== 'spectator').length;
+             // Note: playerCount is not available directly on the room object with subcollections.
+             // This would require another query per room, which is inefficient for a list.
+             // We can either omit it, or show a loading state until we enter the room.
+             // For simplicity, we'll just show max players.
              
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">
@@ -134,7 +138,7 @@ export default function DashboardPage() {
                    <div className="p-4 sm:p-6 pb-0">
                      <CardTitle className="font-headline text-xl sm:text-2xl truncate">{room.name}</CardTitle>
                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {playerCount} / {maxPlayers}</span>
+                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> Hasta {maxPlayers} jugadores</span>
                      </CardDescription>
                    </div>
                 </CardHeader>
