@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 
 interface SuperArtSelectorProps {
   superArts: SuperArt[];
@@ -35,14 +36,17 @@ export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArt
               key={art.id}
               onClick={() => !isSubmitting && setSelectedArt(art)}
               className={cn(
-                'p-4 md:p-6 rounded-lg border-2 transition-all duration-200 relative',
+                'p-4 md:p-6 rounded-lg border-2 transition-all duration-200 relative overflow-hidden',
                 isSubmitting ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                 selectedArt?.id === art.id ? 'border-accent bg-accent/10' : 'border-border hover:border-primary'
               )}
             >
               {selectedArt?.id === art.id && (
-                <CheckCircle className="absolute top-2 right-2 h-5 w-5 md:h-6 md:w-6 text-accent" />
+                <CheckCircle className="absolute top-2 right-2 h-5 w-5 md:h-6 md:w-6 text-accent z-10" />
               )}
+               <div className="relative h-32 w-full mb-4 rounded-md overflow-hidden">
+                <Image src={art.image} alt={art.name} fill className="object-cover" />
+              </div>
               <h3 className="font-headline text-lg md:text-xl text-accent font-bold mb-2">{art.name}</h3>
               <p className="text-muted-foreground text-sm md:text-base">{art.description}</p>
             </div>

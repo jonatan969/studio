@@ -9,9 +9,8 @@ export interface User {
 export interface Character {
     id: string;
     name: string;
-    role: string;
+    role: 'Atacante' | 'Defensor' | 'Apoyo';
     image: string;
-    description?: string;
 }
 
 export interface SuperArt {
@@ -19,6 +18,7 @@ export interface SuperArt {
   characterId: string; // Link back to the character
   name: string;
   description: string;
+  image: string;
   color: 'red' | 'yellow' | 'blue';
   roman: string;
 }

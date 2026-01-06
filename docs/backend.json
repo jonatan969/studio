@@ -22,9 +22,8 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "role": { "type": "string" },
-        "image": { "type": "string", "format": "uri" },
-        "description": { "type": "string" }
+        "role": { "type": "string", "enum": ["Atacante", "Defensor", "Apoyo"] },
+        "image": { "type": "string", "format": "uri" }
       },
       "required": ["id", "name", "role", "image"]
     },
@@ -38,10 +37,11 @@
         "characterId": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
         "color": { "type": "string", "enum": ["red", "yellow", "blue"] },
         "roman": { "type": "string" }
       },
-      "required": ["id", "characterId", "name", "description", "color", "roman"]
+      "required": ["id", "characterId", "name", "description", "image", "color", "roman"]
     },
     "GameData": {
        "$schema": "http://json-schema.org/draft-07/schema#",

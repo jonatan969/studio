@@ -12,20 +12,32 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc } from 'firebase/firestore';
 import type { Character, SuperArt } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+const superArtSchema = z.object({
+  id: z.string(),
+  characterId: z.string(),
+  name: z.string().min(1, 'El nombre es obligatorio'),
+  description: z.string().min(1, 'La descripción es obligatoria'),
+  image: z.string().url('La URL de la imagen no es válida'),
+  color: z.enum(['red', 'yellow', 'blue']),
+  roman: z.string(),
+});
 
 const characterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'El nombre es obligatorio'),
-  role: z.string().min(1, 'El rol es obligatorio'),
+  role: z.enum(['Atacante', 'Defensor', 'Apoyo'], { required_error: 'El rol es obligatorio' }),
   image: z.string().url('La URL de la imagen no es válida'),
-  description: z.string().optional(),
+  superArts: z.array(superArtSchema).length(3),
 });
 
 type CharacterFormData = z.infer<typeof characterSchema>;
@@ -45,8 +57,20 @@ export default function AdminPage() {
     const characters = gameData?.characters || [];
     const superArts = gameData?.super_arts || [];
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm<CharacterFormData>({
+    const { register, control, handleSubmit, reset, formState: { errors } } = useForm<CharacterFormData>({
         resolver: zodResolver(characterSchema),
+        defaultValues: {
+          superArts: [
+            { id: '', characterId: '', name: '', description: '', image: '', color: 'red', roman: 'I' },
+            { id: '', characterId: '', name: '', description: '', image: '', color: 'yellow', roman: 'II' },
+            { id: '', characterId: '', name: '', description: '', image: '', color: 'blue', roman: 'III' },
+          ]
+        }
+    });
+
+    const { fields } = useFieldArray({
+      control,
+      name: "superArts",
     });
 
     useEffect(() => {
@@ -57,25 +81,66 @@ export default function AdminPage() {
 
     const handleOpenForm = (character: Character | null) => {
         setEditingCharacter(character);
-        reset(character || { id: '', name: '', role: '', image: '', description: '' });
+        if (character) {
+            const characterSuperArts = superArts.filter(sa => sa.characterId === character.id).sort((a,b) => a.roman.localeCompare(b.roman));
+            reset({
+                id: character.id,
+                name: character.name,
+                role: character.role,
+                image: character.image,
+                superArts: characterSuperArts.length === 3 ? characterSuperArts : [
+                  { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'red', roman: 'I' },
+                  { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'yellow', roman: 'II' },
+                  { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'blue', roman: 'III' },
+                ],
+            });
+        } else {
+            reset({
+                id: '',
+                name: '',
+                role: undefined,
+                image: '',
+                superArts: [
+                  { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'red', roman: 'I' },
+                  { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'yellow', roman: 'II' },
+                  { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'blue', roman: 'III' },
+                ]
+            });
+        }
         setFormOpen(true);
     };
 
     const onSubmit = async (data: CharacterFormData) => {
         if (!firestore || !gameData) return;
 
-        const updatedCharacters = [...characters];
+        let updatedCharacters = [...characters];
+        let updatedSuperArts = [...superArts];
+        const characterId = editingCharacter?.id || `char-${uuidv4()}`;
+
+        const characterData: Character = {
+            id: characterId,
+            name: data.name,
+            role: data.role,
+            image: data.image,
+        };
+        
+        const newSuperArts = data.superArts.map(sa => ({ ...sa, characterId }));
+        
         if (editingCharacter) { // Editing existing character
-            const index = updatedCharacters.findIndex(c => c.id === editingCharacter.id);
-            if (index > -1) {
-                updatedCharacters[index] = { ...editingCharacter, ...data };
+            const charIndex = updatedCharacters.findIndex(c => c.id === characterId);
+            if (charIndex > -1) {
+                updatedCharacters[charIndex] = characterData;
             }
+            updatedSuperArts = updatedSuperArts.filter(sa => sa.characterId !== characterId);
+            updatedSuperArts.push(...newSuperArts);
+
         } else { // Adding new character
-            updatedCharacters.push({ ...data, id: `char-${uuidv4()}` });
+            updatedCharacters.push(characterData);
+            updatedSuperArts.push(...newSuperArts);
         }
 
         try {
-            await updateDoc(gameDataRef!, { characters: updatedCharacters });
+            await updateDoc(gameDataRef!, { characters: updatedCharacters, super_arts: updatedSuperArts });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
         } catch (error: any) {
@@ -86,8 +151,9 @@ export default function AdminPage() {
     const handleDeleteCharacter = async (characterId: string) => {
         if (!firestore || !gameData) return;
         const updatedCharacters = characters.filter(c => c.id !== characterId);
+        const updatedSuperArts = superArts.filter(sa => sa.characterId !== characterId);
         try {
-            await updateDoc(gameDataRef!, { characters: updatedCharacters });
+            await updateDoc(gameDataRef!, { characters: updatedCharacters, super_arts: updatedSuperArts });
             toast({ title: 'Personaje eliminado' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
@@ -119,34 +185,76 @@ export default function AdminPage() {
                                 Añadir Personaje
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-3xl">
                             <DialogHeader>
                                 <DialogTitle>{editingCharacter ? 'Editar' : 'Añadir'} Personaje</DialogTitle>
                                 <DialogDescription>
-                                    Rellena los detalles del personaje.
+                                    Rellena los detalles del personaje y sus Super Arts.
                                 </DialogDescription>
                             </DialogHeader>
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Nombre</Label>
-                                    <Input id="name" {...register('name')} />
-                                    {errors.name && <p className="text-destructive text-sm">{errors.name.message}</p>}
+                            <form onSubmit={handleSubmit(onSubmit)}>
+                                <ScrollArea className="h-[60vh] p-4">
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Nombre del Personaje</Label>
+                                        <Input id="name" {...register('name')} />
+                                        {errors.name && <p className="text-destructive text-sm">{errors.name.message}</p>}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="role">Rol</Label>
+                                            <Controller
+                                                name="role"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Selecciona un rol" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Atacante">Atacante</SelectItem>
+                                                            <SelectItem value="Defensor">Defensor</SelectItem>
+                                                            <SelectItem value="Apoyo">Apoyo</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.role && <p className="text-destructive text-sm">{errors.role.message}</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="image">URL de Imagen del Personaje</Label>
+                                            <Input id="image" {...register('image')} />
+                                            {errors.image && <p className="text-destructive text-sm">{errors.image.message}</p>}
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-lg font-semibold border-t pt-4">Super Arts</h3>
+                                    
+                                    <div className="space-y-6">
+                                      {fields.map((field, index) => (
+                                        <div key={field.id} className="space-y-4 p-4 border rounded-lg">
+                                            <h4 className="font-bold text-accent">Super Art {field.roman}</h4>
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`superArts.${index}.name`}>Título</Label>
+                                                <Input {...register(`superArts.${index}.name`)} />
+                                                {errors.superArts?.[index]?.name && <p className="text-destructive text-sm">{errors.superArts[index]?.name?.message}</p>}
+                                            </div>
+                                             <div className="space-y-2">
+                                                <Label htmlFor={`superArts.${index}.description`}>Descripción</Label>
+                                                <Input {...register(`superArts.${index}.description`)} />
+                                                {errors.superArts?.[index]?.description && <p className="text-destructive text-sm">{errors.superArts[index]?.description?.message}</p>}
+                                            </div>
+                                             <div className="space-y-2">
+                                                <Label htmlFor={`superArts.${index}.image`}>URL de Imagen</Label>
+                                                <Input {...register(`superArts.${index}.image`)} />
+                                                {errors.superArts?.[index]?.image && <p className="text-destructive text-sm">{errors.superArts[index]?.image?.message}</p>}
+                                            </div>
+                                        </div>
+                                      ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="role">Rol</Label>
-                                    <Input id="role" {...register('role')} />
-                                     {errors.role && <p className="text-destructive text-sm">{errors.role.message}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="image">URL de Imagen</Label>
-                                    <Input id="image" {...register('image')} />
-                                    {errors.image && <p className="text-destructive text-sm">{errors.image.message}</p>}
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="description">Descripción</Label>
-                                    <Input id="description" {...register('description')} />
-                                </div>
-                                <DialogFooter>
+                                </ScrollArea>
+                                <DialogFooter className="pt-4 border-t mt-4">
                                     <Button type="submit">
                                         <Save className="mr-2 h-4 w-4" />
                                         Guardar
@@ -186,13 +294,15 @@ export default function AdminPage() {
                                                     <div><p className="font-bold">Nombre:</p><p>{character.name}</p></div>
                                                     <div><p className="font-bold">Rol:</p><p>{character.role}</p></div>
                                                     <div className="md:col-span-2"><p className="font-bold">URL de Imagen:</p><p className="text-xs break-all">{character.image}</p></div>
-                                                    <div className="md:col-span-2"><p className="font-bold">Descripción:</p><p>{character.description}</p></div>
                                                 </div>
 
                                                 <h4 className="font-semibold pt-4 border-t">Super Arts:</h4>
-                                                <div className="space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     {getCharacterSuperArts(character.id).map(art => (
                                                         <div key={art.id} className="p-3 border rounded-md space-y-2 bg-secondary/50">
+                                                            <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
+                                                                <Image src={art.image} alt={art.name} fill className="object-cover" />
+                                                            </div>
                                                             <p className="font-mono font-bold text-accent">Super Art {art.roman}: {art.name}</p>
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
                                                         </div>
