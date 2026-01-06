@@ -14,8 +14,8 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, arrayUnion } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
 
 const createRoomSchema = z.object({
@@ -77,8 +77,7 @@ export default function CreateRoomPage() {
     setIsLoading(true);
     
     try {
-        const roomsCollection = collection(firestore, 'rooms');
-        const newRoomRef = doc(roomsCollection);
+        const newRoomRef = doc(collection(firestore, 'rooms'));
         const newRoomId = newRoomRef.id;
 
         const player: RoomPlayer = {
@@ -241,5 +240,3 @@ export default function CreateRoomPage() {
     </div>
   );
 }
-
-    
