@@ -1,6 +1,10 @@
 'use client';
 import { Swords, BrainCircuit, Shield, Zap } from 'lucide-react';
 import type { Character, SuperArt } from './types';
+import characterImageData from './character-images.json';
+
+// Create a map for quick image lookup
+const characterImageMap = new Map(characterImageData.images.map(img => [img.id, img.url]));
 
 export const ROLES = {
   ATACANTE: { name: 'Atacante', icon: Swords },
@@ -15,7 +19,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-bombardero",
         "name": "Bombardero",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/bombardero/200/200",
+        "image": characterImageMap.get("char-bombardero") || "https://picsum.photos/seed/bombardero/200/200",
         "hint": "cyborg soldier",
         "description": "Un exotraje fuertemente armado listo para la aniquilación total."
     },
@@ -23,7 +27,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-espadachin",
         "name": "Espadachin",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/espadachin/200/200",
+        "image": characterImageMap.get("char-espadachin") || "https://picsum.photos/seed/espadachin/200/200",
         "hint": "demonic swordsman",
         "description": "Un guerrero ágil que canaliza poder demoníaco en su espada."
     },
@@ -31,7 +35,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-piloto",
         "name": "Piloto",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/piloto/200/200",
+        "image": characterImageMap.get("char-piloto") || "https://picsum.photos/seed/piloto/200/200",
         "hint": "beast master",
         "description": "Un nómada que invoca bestias fantasmales para luchar a su lado."
     },
@@ -39,7 +43,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-arquero",
         "name": "Arquero",
         "role": "Defensor",
-        "image": "https://picsum.photos/seed/arquero/200/200",
+        "image": characterImageMap.get("char-arquero") || "https://picsum.photos/seed/arquero/200/200",
         "hint": "spirit archer",
         "description": "Un arquero místico cuyas flechas manipulan el alma y la luz."
     },
@@ -47,7 +51,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-cazador",
         "name": "Cazador",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/cazador/200/200",
+        "image": characterImageMap.get("char-cazador") || "https://picsum.photos/seed/cazador/200/200",
         "hint": "toxic trapper",
         "description": "Un estratega que utiliza toxinas y trampas para debilitar a sus presas."
     },
@@ -55,7 +59,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-ninja",
         "name": "Ninja",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/ninja/200/200",
+        "image": characterImageMap.get("char-ninja") || "https://picsum.photos/seed/ninja/200/200",
         "hint": "stealth assassin",
         "description": "Un asesino sigiloso que usa el engaño y la tecnología para eliminar objetivos."
     },
@@ -63,7 +67,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-paladin",
         "name": "Paladin",
         "role": "Apoyo",
-        "image": "https://picsum.photos/seed/paladin/200/200",
+        "image": characterImageMap.get("char-paladin") || "https://picsum.photos/seed/paladin/200/200",
         "hint": "holy knight",
         "description": "Un caballero sagrado que protege a sus aliados con luz divina."
     },
@@ -71,7 +75,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-salvaje",
         "name": "Salvaje",
         "role": "Defensor",
-        "image": "https://picsum.photos/seed/salvaje/200/200",
+        "image": characterImageMap.get("char-salvaje") || "https://picsum.photos/seed/salvaje/200/200",
         "hint": "gravity bruiser",
         "description": "Un bruto que manipula la gravedad para controlar el campo de batalla."
     },
@@ -79,7 +83,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-piromano",
         "name": "Piromano",
         "role": "Defensor",
-        "image": "https://picsum.photos/seed/piromano/200/200",
+        "image": characterImageMap.get("char-piromano") || "https://picsum.photos/seed/piromano/200/200",
         "hint": "fire elemental",
         "description": "Una entidad de fuego puro, capaz de desatar el infierno."
     },
@@ -87,7 +91,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-ahogado",
         "name": "Ahogado",
         "role": "Atacante",
-        "image": "https://picsum.photos/seed/ahogado/200/200",
+        "image": characterImageMap.get("char-ahogado") || "https://picsum.photos/seed/ahogado/200/200",
         "hint": "oceanic warrior",
         "description": "Un guerrero de las profundidades que comanda la furia del océano."
     },
@@ -95,7 +99,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-clerigo",
         "name": "Clerigo",
         "role": "Apoyo",
-        "image": "https://picsum.photos/seed/clerigo/200/200",
+        "image": characterImageMap.get("char-clerigo") || "https://picsum.photos/seed/clerigo/200/200",
         "hint": "space bender",
         "description": "Un monje que manipula el espacio-tiempo para reposicionar aliados y enemigos."
     },
@@ -103,7 +107,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-explorador",
         "name": "Explorador",
         "role": "Defensor",
-        "image": "https://picsum.photos/seed/explorador/200/200",
+        "image": characterImageMap.get("char-explorador") || "https://picsum.photos/seed/explorador/200/200",
         "hint": "hell summoner",
         "description": "Un invocador que abre portales para traer criaturas infernales."
     },
@@ -111,7 +115,7 @@ export const CHARACTERS: Character[] = [
         "id": "char-bruja",
         "name": "Bruja",
         "role": "Apoyo",
-        "image": "https://picsum.photos/seed/bruja/200/200",
+        "image": characterImageMap.get("char-bruja") || "https://picsum.photos/seed/bruja/200/200",
         "hint": "curse witch",
         "description": "Una hechicera que utiliza maldiciones y magia dracónica."
     }
