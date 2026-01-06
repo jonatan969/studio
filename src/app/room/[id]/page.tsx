@@ -75,7 +75,7 @@ export default function RoomPage() {
   const allDataLoading = isRoomLoading || arePlayersLoading || arePicksLoading || isUserLoading;
 
   const handleLeaveRoom = useCallback(async () => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !roomRef) return;
     try {
         const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
         await deleteDoc(playerDocRef);
@@ -83,7 +83,7 @@ export default function RoomPage() {
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error al salir', description: error.message });
     }
-  }, [user, firestore, router, roomId, toast]);
+  }, [user, firestore, router, roomId, toast, roomRef]);
 
 
   React.useEffect(() => {
@@ -109,7 +109,7 @@ export default function RoomPage() {
   }, [allDataLoading, user, userPlayerInfo, roomData]);
 
   const handleJoin = async (team: 'team1' | 'team2' | 'spectator') => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !roomData || !players) return;
     
     const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
 
@@ -148,14 +148,13 @@ export default function RoomPage() {
     }
   };
 
-  // State machine effect, run only by admin to avoid race conditions
+  // State machine effect, can be run by anyone to avoid bottlenecks
   React.useEffect(() => {
       if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks) return;
       
       const isRoomAdmin = user.uid === roomData.adminId;
-      if (!isRoomAdmin) return;
-
-      if (players.length === 0 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
+      
+      if (isRoomAdmin && players.length === 0 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
         updateDoc(roomRef, { phase: 'CANCELED', turnEndsAt: null });
         return;
       }
@@ -169,7 +168,7 @@ export default function RoomPage() {
         }
       }
       
-      if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
+      if (isRoomAdmin && timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
           lastProcessedTimestamp.current = roomData.turnEndsAt;
           
           switch(roomData.phase) {
