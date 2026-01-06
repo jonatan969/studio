@@ -114,7 +114,7 @@ export default function DashboardPage() {
           {rooms?.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
-             const playerCount = room.players.filter(p => p.team !== 'spectator').length;
+             const playerCount = (room.players || []).filter(p => p.team !== 'spectator').length;
              
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">
