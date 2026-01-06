@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -26,7 +25,6 @@ const characterSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   role: z.string().min(1, 'El rol es obligatorio'),
   image: z.string().url('La URL de la imagen no es válida'),
-  hint: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -59,7 +57,7 @@ export default function AdminPage() {
 
     const handleOpenForm = (character: Character | null) => {
         setEditingCharacter(character);
-        reset(character || { id: '', name: '', role: '', image: '', hint: '', description: '' });
+        reset(character || { id: '', name: '', role: '', image: '', description: '' });
         setFormOpen(true);
     };
 
@@ -144,10 +142,6 @@ export default function AdminPage() {
                                     <Input id="image" {...register('image')} />
                                     {errors.image && <p className="text-destructive text-sm">{errors.image.message}</p>}
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="hint">Pista de IA (ej. "cyborg soldier")</Label>
-                                    <Input id="hint" {...register('hint')} />
-                                </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="description">Descripción</Label>
                                     <Input id="description" {...register('description')} />
@@ -192,7 +186,6 @@ export default function AdminPage() {
                                                     <div><p className="font-bold">Nombre:</p><p>{character.name}</p></div>
                                                     <div><p className="font-bold">Rol:</p><p>{character.role}</p></div>
                                                     <div className="md:col-span-2"><p className="font-bold">URL de Imagen:</p><p className="text-xs break-all">{character.image}</p></div>
-                                                    <div className="md:col-span-2"><p className="font-bold">Pista de IA:</p><p>{character.hint}</p></div>
                                                     <div className="md:col-span-2"><p className="font-bold">Descripción:</p><p>{character.description}</p></div>
                                                 </div>
 
@@ -221,6 +214,3 @@ export default function AdminPage() {
         </div>
     );
 }
-
-
-    

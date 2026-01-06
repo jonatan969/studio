@@ -24,7 +24,6 @@
         "name": { "type": "string" },
         "role": { "type": "string" },
         "image": { "type": "string", "format": "uri" },
-        "hint": { "type": "string" },
         "description": { "type": "string" }
       },
       "required": ["id", "name", "role", "image"]
