@@ -1,8 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite el acceso de lectura y escritura a CUALQUIER persona (autenticada o no)
-    // a toda la base de datos. Esto elimina todos los errores de permisos.
     match /{document=**} {
       allow read, write: if true;
     }
