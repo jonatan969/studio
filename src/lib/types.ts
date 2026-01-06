@@ -38,12 +38,8 @@ export interface RoomPlayer {
 }
 
 export interface DraftPick {
+    id?: string; // ID will be the player's UID
     characterId: string;
-    name: string;
-    role: string;
-    image: string;
-    hint?: string;
-    description?: string;
     pickedBy: string; // uid of player
     nickname: string; // nickname of player who picked
     team: 'team1' | 'team2';
@@ -53,7 +49,7 @@ export interface DraftPick {
 }
 
 export interface Room {
-    id: string;
+    id?: string;
     name: string;
     adminId: string;
     team1Name: string;
@@ -63,8 +59,6 @@ export interface Room {
     playersPerTeam: number;
     spectatorLimit: number;
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
-    players: RoomPlayer[]; // Array of players
-    picks: DraftPick[]; // Array of picks
     firstPicker?: 'team1' | 'team2';
     pickOrder?: { team: 'team1' | 'team2'; picks: number }[];
     currentPicker?: 'team1' | 'team2' | null;

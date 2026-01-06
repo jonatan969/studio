@@ -1,11 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows any authenticated user to read and write to any document
-    // in the entire database. This is a broad but effective rule for development
-    // to ensure there are no permission-related blockers.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth.uid == userId;
+    }
+
+    match /rooms/{roomId} {
+      allow read, create: if request.auth != null;
+      // Any authenticated user can update the room's core data (phase, turn, etc.)
+      // This is simpler and avoids the admin being a bottleneck.
+      allow update: if request.auth != null;
+
+      // Rules for the 'players' subcollection
+      match /players/{userId} {
+        // Any authenticated user can see who is in the room.
+        allow list, read: if request.auth != null;
+        
+        // A user can only create, update, or delete their OWN player document.
+        // The document ID {userId} must match their own auth UID.
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Rules for the 'picks' subcollection
+      match /picks/{userId} {
+         // Any authenticated user can see the picks.
+        allow list, read: if request.auth != null;
+
+        // A user can only create or update their own pick document.
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }

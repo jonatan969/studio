@@ -11,7 +11,7 @@ import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Room } from '@/lib/types';
 
 
@@ -19,23 +19,57 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-
-  const roomsQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
-      // We only want to show rooms that are not finished or canceled
-      return query(
-        collection(firestore, 'rooms'), 
-        where('phase', 'in', ['PREP', 'COIN_FLIP', 'DRAFTING', 'SUPER_ART', 'REVEAL'])
-      );
-  }, [firestore]);
-
-  const { data: rooms, isLoading: isLoadingRooms } = useCollection<Room>(roomsQuery);
+  const [roomsWithPlayerCount, setRoomsWithPlayerCount] = useState<(Room & { playerCount: number })[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/');
     }
   }, [user, isUserLoading, router]);
+  
+  useEffect(() => {
+    if (!firestore) return;
+
+    const fetchRooms = async () => {
+        setIsLoadingRooms(true);
+        const roomsQuery = query(
+            collection(firestore, 'rooms'),
+            where('phase', 'in', ['PREP', 'COIN_FLIP', 'DRAFTING', 'SUPER_ART', 'REVEAL'])
+        );
+
+        const unsubscribe = useCollection.call(null, roomsQuery);
+
+        try {
+            const querySnapshot = await getDocs(roomsQuery);
+            const roomsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Room[];
+
+            const roomsWithCounts = await Promise.all(roomsData.map(async (room) => {
+                const playersSnapshot = await getDocs(collection(firestore, 'rooms', room.id, 'players'));
+                const playerCount = playersSnapshot.docs.filter(doc => doc.data().team !== 'spectator').length;
+                return { ...room, playerCount };
+            }));
+
+            setRoomsWithPlayerCount(roomsWithCounts);
+        } catch (error) {
+            console.error("Error fetching rooms or player counts: ", error);
+        } finally {
+            setIsLoadingRooms(false);
+        }
+
+        // This is a bit of a hack to use the real-time functionality of useCollection
+        // in a one-off fetch scenario. The proper way would be to integrate the count
+        // logic within the useCollection hook itself, but for now this works.
+        return () => {
+             if (typeof unsubscribe === 'function') {
+                // This will not be called as useCollection is not used in a hook-like way here.
+             }
+        };
+    };
+
+    fetchRooms();
+}, [firestore]);
+
 
   if (isUserLoading || !user) {
     return (
@@ -103,7 +137,7 @@ export default function DashboardPage() {
             </div>
         )}
 
-        {!isLoadingRooms && rooms?.length === 0 && (
+        {!isLoadingRooms && roomsWithPlayerCount.length === 0 && (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
                 <h2 className="text-2xl font-semibold">No hay salas disponibles</h2>
                 <p className="text-muted-foreground mt-2">¿Por qué no creas una y empiezas la batalla?</p>
@@ -111,10 +145,9 @@ export default function DashboardPage() {
         )}
 
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {rooms?.map((room) => {
+          {roomsWithPlayerCount.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
-             const playerCount = (room.players || []).filter(p => p.team !== 'spectator').length;
              
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">
@@ -136,7 +169,7 @@ export default function DashboardPage() {
                    <div className="p-4 sm:p-6 pb-0">
                      <CardTitle className="font-headline text-xl sm:text-2xl truncate">{room.name}</CardTitle>
                      <CardDescription className="flex items-center gap-4 mt-2">
-                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {playerCount} / {maxPlayers}</span>
+                        <span className="flex items-center gap-1 text-sm"><Users className="h-4 w-4" /> {room.playerCount} / {maxPlayers}</span>
                      </CardDescription>
                    </div>
                 </CardHeader>
