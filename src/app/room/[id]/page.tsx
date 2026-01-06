@@ -74,7 +74,7 @@ export default function RoomPage() {
   const allDataLoading = isRoomLoading || isUserLoading;
 
   const handleLeaveRoom = useCallback(async () => {
-    if (!user || !roomData || !firestore || !userPlayerInfo) return;
+    if (!user || !roomData || !firestore || !userPlayerInfo || !roomRef) return;
     try {
       await updateDoc(roomRef, { players: arrayRemove(userPlayerInfo) });
       if (roomData.players.length === 1) {
@@ -128,7 +128,7 @@ export default function RoomPage() {
   };
 
   const handleSwitchTeam = async (team: 'team1' | 'team2' | 'spectator') => {
-    if (!user || !roomData || !firestore || !userPlayerInfo) return;
+    if (!user || !roomData || !firestore || !userPlayerInfo || !roomRef) return;
     
     const updatedPlayer = { ...userPlayerInfo, team };
     const otherPlayers = players.filter(p => p.uid !== user.uid);
@@ -211,7 +211,9 @@ export default function RoomPage() {
                            newPicks.push(pickData);
                            dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`});
                       }
-                      updateDoc(roomRef, { picks: arrayUnion(...newPicks) }).catch(e => console.error("Error auto-picking character:", e));
+                      if(newPicks.length > 0) {
+                        updateDoc(roomRef, { picks: arrayUnion(...newPicks) }).catch(e => console.error("Error auto-picking character:", e));
+                      }
                   }
                   break;
               case 'SUPER_ART':
@@ -221,11 +223,11 @@ export default function RoomPage() {
           }
       }
 
-  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef]);
+  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players]);
 
   // Turn progression logic, run by admin
   React.useEffect(() => {
-    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder) return;
+    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder || !user) return;
     
     const isRoomAdmin = user?.uid === roomData?.adminId;
     if (!isRoomAdmin) return;
@@ -408,7 +410,7 @@ export default function RoomPage() {
 
   const canPick = userPlayerInfo && userPlayerInfo.team !== 'spectator' &&
                   roomData.phase === 'DRAFTING' && roomData.currentPicker === userPlayerInfo.team &&
-                  !draftPicks.some(p => p.pickedBy === user.uid) &&
+                  !draftPicks.some(p => p.pickedBy === user?.uid) &&
                   (draftPicks.filter(p => p.turn === roomData.turn).length || 0) < (roomData.pickOrder?.[roomData.turn || 0]?.picks || 0);
 
   return (
