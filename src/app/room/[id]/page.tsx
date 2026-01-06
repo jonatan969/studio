@@ -78,23 +78,14 @@ export default function RoomPage() {
 
   const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || arePicksLoading;
 
-  const cleanupRoom = useCallback(async () => {
-    if (!firestore || !roomId || !roomRef) return;
-    try {
-        await deleteSubcollection(firestore, `rooms/${roomId}/picks`);
-        await deleteSubcollection(firestore, `rooms/${roomId}/players`);
-        await deleteDoc(roomRef);
-    } catch (error) {
-        console.error("Error cleaning up room:", error);
-    }
-  }, [firestore, roomId, roomRef]);
-
   const handleLeaveRoom = useCallback(async () => {
-    if (!user || !roomData || !firestore) return;
+    if (!user || !roomData || !firestore || !roomRef) return;
 
+    // If the user is the last one, mark the room as canceled.
     if (players && players.length === 1 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
         await updateDocumentNonBlocking(roomRef, { phase: 'CANCELED' });
     } else {
+        // Otherwise, just remove the player from the room.
         const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
         await deleteDocumentNonBlocking(playerDocRef);
     }
@@ -230,12 +221,12 @@ export default function RoomPage() {
                    break;
               case 'FINISHED':
               case 'CANCELED':
-                   cleanupRoom().then(() => router.push('/dashboard'));
+                   // No automatic cleanup. The room persists until manually deleted.
                    break;
           }
       }
 
-  }, [roomData, user, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, cleanupRoom, timeLeft, picksRef]);
+  }, [roomData, user, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, timeLeft, picksRef]);
 
   // Client-side turn advancement logic
   React.useEffect(() => {
@@ -387,7 +378,7 @@ export default function RoomPage() {
       case 'DRAFTING': return 'Fase de Elección';
       case 'SUPER_ART': return 'Selección de Super Art';
       case 'REVEAL': return 'La Revelación';
-      case 'FINISHED': return 'La sala se cerrará en';
+      case 'FINISHED': return 'Draft Finalizado';
       case 'CANCELED': return 'Draft Cancelado';
       default: return 'Draft en progreso';
     }
@@ -402,7 +393,7 @@ export default function RoomPage() {
   const handleCompleteReveal = () => {
     if (user?.uid === roomData?.adminId && roomRef) {
         if(roomData.phase !== 'FINISHED') {
-            updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', turnEndsAt: Date.now() + ROOM_CLOSE_TIME * 1000 });
+            updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', turnEndsAt: null });
         }
     }
   }
@@ -540,11 +531,11 @@ export default function RoomPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Cancelado</AlertDialogTitle>
                     <AlertDialogDescription>
-                        El draft ha sido cancelado porque la sala se quedó vacía. Serás devuelto al lobby.
+                        El draft ha sido cancelado. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => cleanupRoom().then(() => router.push('/dashboard'))}>Volver al Lobby</AlertDialogAction>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Volver al Lobby</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
@@ -553,11 +544,11 @@ export default function RoomPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">¡Draft Finalizado!</AlertDialogTitle>
                     <AlertDialogDescription>
-                        El draft está completo. Esta sala se cerrará en breve.
+                        El draft está completo. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => cleanupRoom().then(() => router.push('/dashboard'))}>Volver al Lobby</AlertDialogAction>
+                    <AlertDialogAction onClick={() => router.push('/dashboard')}>Volver al Lobby</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
