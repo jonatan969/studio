@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,7 +11,7 @@ import { PlusCircle, Users, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import type { Room } from '@/lib/types';
 
 
@@ -29,27 +29,6 @@ export default function DashboardPage() {
   }, [firestore]);
 
   const { data: rooms, isLoading: isLoadingRooms } = useCollection<Room>(roomsQuery);
-
-  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (!firestore || !rooms) return;
-
-    const unsubscribers = rooms.map(room => {
-      const playersColRef = collection(firestore, 'rooms', room.id, 'players');
-      return onSnapshot(playersColRef, (snapshot) => {
-        const count = snapshot.docs.filter(doc => doc.data().team !== 'spectator').length;
-        setPlayerCounts(prevCounts => ({
-          ...prevCounts,
-          [room.id]: count
-        }));
-      });
-    });
-
-    return () => unsubscribers.forEach(unsub => unsub());
-
-  }, [firestore, rooms]);
-
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -133,7 +112,7 @@ export default function DashboardPage() {
           {rooms?.map((room) => {
              const roomImage = PlaceHolderImages.find(p => p.id === 'room-1');
              const maxPlayers = room.playersPerTeam * 2;
-             const playerCount = playerCounts[room.id] ?? 0;
+             const playerCount = (room.players || []).filter(p => p.team !== 'spectator').length;
              
             return (
               <Card key={room.id} className="flex flex-col overflow-hidden hover:border-primary transition-colors duration-200">

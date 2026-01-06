@@ -15,9 +15,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
-import { getPickOrder } from '@/lib/constants';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),
@@ -78,10 +77,15 @@ export default function CreateRoomPage() {
     setIsLoading(true);
     
     try {
-        const batch = writeBatch(firestore);
-
         const newRoomRef = doc(collection(firestore, 'rooms'));
-        const newRoomId = newRoomRef.id;
+        
+        const player: RoomPlayer = {
+            uid: user.uid,
+            nickname: user.displayName || 'Anón.',
+            photoURL: user.photoURL,
+            team: data.joinPreference,
+            isReady: false,
+        };
 
         const roomData: Room = {
             name: data.roomName,
@@ -93,27 +97,18 @@ export default function CreateRoomPage() {
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
             phase: 'PREP',
+            players: [player],
+            picks: [],
         };
-        batch.set(newRoomRef, roomData);
-
-        const playerRef = doc(firestore, 'rooms', newRoomId, 'players', user.uid);
-        const player: RoomPlayer = {
-            uid: user.uid,
-            nickname: user.displayName || 'Anón.',
-            photoURL: user.photoURL,
-            team: data.joinPreference,
-            isReady: false,
-        };
-        batch.set(playerRef, player);
         
-        await batch.commit();
+        await setDoc(newRoomRef, roomData);
 
         toast({
           title: '¡Sala Creada!',
           description: `La sala "${data.roomName}" ha sido creada exitosamente.`,
         });
 
-        router.push(`/room/${newRoomId}`);
+        router.push(`/room/${newRoomRef.id}`);
     } catch(error: any) {
         toast({ variant: 'destructive', title: 'Error al Crear la Sala', description: error.message });
         setIsLoading(false);
