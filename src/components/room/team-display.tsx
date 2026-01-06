@@ -48,7 +48,7 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
                   </Avatar>
                   <div className="relative h-full aspect-square flex-shrink-0 rounded-md overflow-hidden bg-muted animate-in fade-in duration-500">
                     {pick ? (
-                      <Image src={pick.image} alt={pick.name} fill className="object-cover" />
+                      <Image src={pick.image} alt={pick.name} fill className="object-cover img-pixelated" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted/30">
                         <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/50" />

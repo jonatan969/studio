@@ -21,7 +21,7 @@ export function CharacterSquare({ character, isPicked, isPreselected, onClick }:
       )}
       onClick={!isPicked ? onClick : undefined}
     >
-        <Image src={character.image} alt={character.name} fill className="object-cover" />
+        <Image src={character.image} alt={character.name} fill className="object-cover img-pixelated" />
         <div className={cn(
           'absolute inset-0 bg-black/50 transition-all duration-300',
           isPicked ? 'opacity-100' : 'opacity-0 group-hover:opacity-20'

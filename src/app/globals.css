@@ -82,3 +82,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .img-pixelated {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}

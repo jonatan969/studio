@@ -292,7 +292,7 @@ export default function AdminPage() {
                                     <AccordionItem value={character.id} key={character.id}>
                                         <AccordionTrigger>
                                             <div className="flex items-center gap-4 w-full">
-                                                <Image src={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover" />
+                                                <Image src={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
                                                 <span className="font-bold">{character.name}</span>
                                                 <span className="text-sm text-muted-foreground">({character.role})</span>
                                             </div>
@@ -310,7 +310,7 @@ export default function AdminPage() {
                                                     {getCharacterSuperArts(character.id).map(art => (
                                                         <div key={art.id} className="p-3 border rounded-md space-y-2 bg-secondary/50">
                                                             <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
-                                                                <Image src={art.image} alt={art.name} fill className="object-cover" />
+                                                                <Image src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
                                                             </div>
                                                             <p className="font-mono font-bold text-accent">Super Art {art.roman}: {art.name}</p>
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
@@ -333,5 +333,3 @@ export default function AdminPage() {
         </div>
     );
 }
-
-    
