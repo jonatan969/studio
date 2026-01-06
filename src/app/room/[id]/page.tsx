@@ -13,9 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { History, Loader2, LogOut, ShieldAlert, Users, Swords } from 'lucide-react';
 import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
-import { useDoc, useUser, useFirestore, useMemoFirebase, updateDocument, useCollection, setDoc, deleteDoc as deleteDocument } from '@/firebase';
-import { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
-import { doc, deleteDoc, writeBatch, collection, CollectionReference, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
+import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import type { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
+import { doc, deleteDoc, writeBatch, collection, type CollectionReference, updateDoc, setDoc } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -79,7 +79,7 @@ export default function RoomPage() {
     if (!user || !roomData || !firestore) return;
     const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
     try {
-      await deleteDocument(playerDocRef);
+      await deleteDoc(playerDocRef);
       if (players && players.length === 1 && roomRef) {
          await updateDoc(roomRef, { phase: 'CANCELED' });
       }
