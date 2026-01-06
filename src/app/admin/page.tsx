@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { PageHeader } from '@/components/page-header';
 import { Loader2, PlusCircle, Save, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { collection, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import type { Character, SuperArt } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -76,7 +77,7 @@ export default function AdminPage() {
         }
 
         try {
-            await updateDoc(gameDataRef, { characters: updatedCharacters });
+            await updateDoc(gameDataRef!, { characters: updatedCharacters });
             toast({ title: `Personaje ${editingCharacter ? 'actualizado' : 'añadido'}` });
             setFormOpen(false);
         } catch (error: any) {
@@ -88,7 +89,7 @@ export default function AdminPage() {
         if (!firestore || !gameData) return;
         const updatedCharacters = characters.filter(c => c.id !== characterId);
         try {
-            await updateDoc(gameDataRef, { characters: updatedCharacters });
+            await updateDoc(gameDataRef!, { characters: updatedCharacters });
             toast({ title: 'Personaje eliminado' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
@@ -220,3 +221,6 @@ export default function AdminPage() {
         </div>
     );
 }
+
+
+    
