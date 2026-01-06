@@ -23,7 +23,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
-import { deleteSubcollection } from '@/lib/utils';
 import { CharacterGrid } from '@/components/room/character-grid';
 import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
 
@@ -139,10 +138,9 @@ export default function RoomPage() {
     toast({title: `Te cambiaste a ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
   };
 
-  // Main Game State Machine (driven by admin)
+  // Main Game State Machine (can be driven by any client)
   React.useEffect(() => {
       if (allDataLoading || !roomData || !roomRef || !players || !draftPicks) return;
-      if (user?.uid !== roomData?.adminId) return; // Only admin drives state changes
 
       // Rule: If room becomes empty (and not already finished/canceled), cancel it
       if (players.length === 0 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
@@ -226,11 +224,11 @@ export default function RoomPage() {
           }
       }
 
-  }, [roomData, user, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, timeLeft, picksRef]);
+  }, [roomData, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, timeLeft, picksRef]);
 
   // Client-side turn advancement logic
   React.useEffect(() => {
-    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || user?.uid !== roomData.adminId || roomData.turn === undefined) return;
+    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || roomData.turn === undefined) return;
 
     const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
     const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
@@ -255,7 +253,7 @@ export default function RoomPage() {
              dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
          }
     }
-  }, [roomData, user, roomRef, draftPicks, allDataLoading]);
+  }, [roomData, roomRef, draftPicks, allDataLoading]);
 
     // Client-side auto-pick from preselection
     React.useEffect(() => {
@@ -318,14 +316,14 @@ export default function RoomPage() {
     const playersWithPicks = players.filter(p => p.team !== 'spectator');
     const allPlayersPickedSuperArt = draftPicks.filter(p => p.superArtId).length + 1 >= playersWithPicks.length;
 
-    if (allPlayersPickedSuperArt && user.uid === roomData.adminId) { 
+    if (allPlayersPickedSuperArt) { 
         updateDocumentNonBlocking(roomRef, { phase: 'REVEAL', turnEndsAt: null });
         dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
     }
   }
 
   const handleCoinFlipResult = (winner: TeamId) => {
-    if(user?.uid === roomData?.adminId && roomRef && roomData) {
+    if(roomRef && roomData) {
         if (roomData.phase !== 'COIN_FLIP') return; // Prevent re-triggering
         
         const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
@@ -342,6 +340,12 @@ export default function RoomPage() {
     }
   }
   
+  const handleCompleteReveal = () => {
+    if (roomRef && roomData && roomData.phase !== 'FINISHED') {
+        updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', turnEndsAt: null });
+    }
+  }
+
   if (allDataLoading || !players || !draftPicks) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -390,14 +394,6 @@ export default function RoomPage() {
     return { ...pick, ...character, superArt: superArt || null };
   }) || [];
   
-  const handleCompleteReveal = () => {
-    if (user?.uid === roomData?.adminId && roomRef) {
-        if(roomData.phase !== 'FINISHED') {
-            updateDocumentNonBlocking(roomRef, { phase: 'FINISHED', turnEndsAt: null });
-        }
-    }
-  }
-
   const getInitials = (name: string | null) => {
     if (!name) return '';
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
