@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
 import { DraftTimer } from '@/components/room/draft-timer';
-import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, ROOM_CLOSE_TIME, DRAFT_START_TIMER, getPickOrder } from '@/lib/constants';
+import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, DRAFT_START_TIMER, getPickOrder } from '@/lib/constants';
 import { SuperArtSelector } from '@/components/room/super-art-selector';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -143,16 +143,18 @@ export default function RoomPage() {
     }
   };
 
+  // State machine effect, run only by admin
   React.useEffect(() => {
       if (allDataLoading || !roomData || !roomRef || !players || !draftPicks) return;
+      
+      const isRoomAdmin = user?.uid === roomData?.adminId;
+      if (!isRoomAdmin) return; // Only admin drives state changes
 
       if (players.length === 0 && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
         updateDoc(roomRef, { phase: 'CANCELED', turnEndsAt: null });
         return;
       }
       
-      const isRoomAdmin = user?.uid === roomData?.adminId;
-
       if (roomData.phase === 'PREP') {
         const team1Players = players.filter(p => p.team === 'team1').length;
         const team2Players = players.filter(p => p.team === 'team2').length;
@@ -220,10 +222,13 @@ export default function RoomPage() {
           }
       }
 
-  }, [roomData, players, draftPicks, roomRef, firestore, router, characters, allDataLoading, timeLeft, picksRef, user]);
+  }, [roomData, players, draftPicks, roomRef, firestore, characters, allDataLoading, timeLeft, picksRef, user]);
 
   React.useEffect(() => {
     if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || !draftPicks || !roomData.pickOrder || roomData.turn === undefined) return;
+    
+    const isRoomAdmin = user?.uid === roomData?.adminId;
+    if (!isRoomAdmin) return;
 
     const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
     const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
@@ -250,7 +255,7 @@ export default function RoomPage() {
              dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
          }
     }
-  }, [roomData, roomRef, draftPicks, allDataLoading, players]);
+  }, [roomData, roomRef, draftPicks, allDataLoading, players, user]);
 
     React.useEffect(() => {
         if (timeLeft <= 0 && roomData?.phase === 'DRAFTING' && preselectedCharacter && canPick) {

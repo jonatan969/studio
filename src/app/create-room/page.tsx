@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
+import { getPickOrder } from '@/lib/constants';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),

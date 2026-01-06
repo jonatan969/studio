@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useUser, useAuth, useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
@@ -63,7 +63,7 @@ export default function ProfilePage() {
       });
 
       const userDocRef = doc(firestore, 'users', user.uid);
-      updateDocumentNonBlocking(userDocRef, {
+      await updateDoc(userDocRef, {
           nickname: nickname,
           photoURL: photoURL,
       });
