@@ -116,10 +116,9 @@ export default function DashboardPage() {
         </div>
 
         {isLoadingRooms && (
-            <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {[...Array(3)].map((_, i) => (
-                    <Card key={i}><CardContent className="h-64 animate-pulse bg-muted rounded-lg p-0"></CardContent></Card>
-                ))}
+            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                <h2 className="text-2xl font-semibold">Buscando salas...</h2>
+                <p className="text-muted-foreground mt-2">Un momento por favor.</p>
             </div>
         )}
 

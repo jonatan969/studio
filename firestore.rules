@@ -8,18 +8,27 @@ service cloud.firestore {
     }
 
     match /rooms/{roomId} {
-      allow read, create, update: if request.auth != null;
+      // Allow any authenticated user to list rooms for the dashboard, and read a specific room.
+      allow list, read: if request.auth != null;
+      
+      // Allow any authenticated user to create or update a room's main data.
+      allow create, update: if request.auth != null;
 
       // Rules for the 'players' subcollection
       match /players/{userId} {
+        // Any authenticated user can see who is in the room.
         allow list, read: if request.auth != null;
+        
         // A user can only create, update, or delete their OWN player document.
+        // The document ID {userId} must match their own auth UID.
         allow write: if request.auth != null && request.auth.uid == userId;
       }
       
       // Rules for the 'picks' subcollection
       match /picks/{userId} {
+         // Any authenticated user can see the picks.
         allow list, read: if request.auth != null;
+
         // A user can only create or update their own pick document.
         allow write: if request.auth != null && request.auth.uid == userId;
       }
