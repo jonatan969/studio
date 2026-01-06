@@ -123,7 +123,12 @@ export default function RoomPage() {
       setJoinDialogOpen(false);
       toast({title: `Te uniste como ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData.team1Name : roomData.team2Name}`}`});
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error al unirse', description: error.message });
+      console.error("Error joining room: ", error);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error al unirse a la sala', 
+        description: error.message || 'No se pudo registrar en la sala. Por favor, revisa los permisos de Firestore.' 
+      });
     }
   };
 
@@ -227,7 +232,7 @@ export default function RoomPage() {
 
   // Turn progression logic, run by admin
   React.useEffect(() => {
-    if(allDataLoading || !roomRef || !roomData || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder || !user) return;
+    if(allDataLoading || !roomData || !roomRef || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder || !user) return;
     
     const isRoomAdmin = user?.uid === roomData?.adminId;
     if (!isRoomAdmin) return;
