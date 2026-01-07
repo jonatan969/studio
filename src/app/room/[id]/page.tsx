@@ -197,7 +197,7 @@ export default function RoomPage() {
     }
   };
 
-  const handleCoinFlipResult = useCallback(async (winner: TeamId) => {
+  const startDraftPhase = useCallback(async (winner: TeamId) => {
     if(!roomRef || !roomData) return;
     const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
     try {
@@ -229,10 +229,20 @@ export default function RoomPage() {
             const team1Players = players.filter(p => p.team === 'team1').length;
             const team2Players = players.filter(p => p.team === 'team2').length;
             if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
+                
+                let winner: TeamId;
+                if (roomData.firstPickerSetting === 'random') {
+                    const seconds = new Date().getSeconds();
+                    winner = seconds % 2 === 0 ? 'team1' : 'team2';
+                } else {
+                    winner = roomData.firstPickerSetting;
+                }
+
                 await updateDoc(roomRef, { 
-                    phase: 'COIN_FLIP', 
+                    phase: 'COIN_FLIP',
+                    firstPicker: winner, // Decide winner now
                     turnEndsAt: Date.now() + COIN_FLIP_DURATION * 1000,
-                    log: arrayUnion(`¡Los equipos están completos! Lanzando la moneda...`)
+                    log: arrayUnion(`¡Los equipos están completos! ${roomData.firstPickerSetting === 'random' ? 'Lanzando la moneda...' : 'El primer elector ha sido predefinido.'}`)
                 });
             }
             break;
@@ -241,14 +251,9 @@ export default function RoomPage() {
             if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
                 lastProcessedTimestamp.current = roomData.turnEndsAt;
                 
-                const team1Players = players.filter(p => p.team === 'team1').length;
-                const team2Players = players.filter(p => p.team === 'team2').length;
-                if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
-                    await updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null, log: arrayUnion(`Alguien se fue. Reiniciando preparativos.`) });
-                } else {
-                    const seconds = new Date().getSeconds();
-                    const winner: TeamId = seconds % 2 === 0 ? 'team1' : 'team2';
-                    await handleCoinFlipResult(winner);
+                // Winner is already decided, just start the draft
+                if (roomData.firstPicker) {
+                    await startDraftPhase(roomData.firstPicker);
                 }
             }
             break;
@@ -284,7 +289,7 @@ export default function RoomPage() {
                 lastProcessedTimestamp.current = roomData.turnEndsAt;
                 
                 const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
-                const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(pick => pick.pickedBy === p.uid && pick.turn === roomData.turn));
+                const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(pick => pick.pickedBy === p.uid));
                 const picksToAutoSelect = picksExpectedThisTurn - picksMadeThisTurn;
                 
                 if (playersOnTeamWhoHaventPicked.length > 0 && picksToAutoSelect > 0) {
@@ -344,7 +349,7 @@ export default function RoomPage() {
 
       advanceState();
 
-  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, handleCoinFlipResult]);
+  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, startDraftPhase]);
 
 
     React.useEffect(() => {
@@ -364,8 +369,9 @@ export default function RoomPage() {
         return;
     }
     
-    const picksMadeThisTurnByMyTeam = draftPicks.filter(p => p.turn === roomData.turn).length;
+    const picksMadeThisTurnByMyTeam = draftPicks.filter(p => p.turn === roomData.turn && p.team === userPlayerInfo.team).length;
     const picksAllowedThisTurn = roomData.pickOrder[roomData.turn]?.picks || 0;
+
     
     if (picksMadeThisTurnByMyTeam >= picksAllowedThisTurn) {
         toast({ variant: 'destructive', title: "Tu equipo ya ha elegido el máximo para este turno." });
@@ -508,6 +514,8 @@ export default function RoomPage() {
                     team2Name={roomData.team2Name}
                     team1Logo={roomData.team1Logo}
                     team2Logo={roomData.team2Logo}
+                    winner={roomData.firstPicker}
+                    isStatic={roomData.firstPickerSetting !== 'random'}
                 />
             )}
             
@@ -627,5 +635,3 @@ export default function RoomPage() {
     </div>
   );
 }
-
-    

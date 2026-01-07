@@ -5,28 +5,45 @@ import { VersusLogo } from "../icons/logo";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
+type TeamId = 'team1' | 'team2';
+
 interface CoinFlipProps {
     team1Name: string;
     team2Name: string;
     team1Logo?: string | null;
     team2Logo?: string | null;
+    winner?: TeamId | null;
+    isStatic?: boolean;
 }
 
-export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFlipProps) {
+export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, isStatic = false }: CoinFlipProps) {
     const [isFlipping, setIsFlipping] = useState(false);
     
     useEffect(() => {
-        setIsFlipping(true);
-        // The animation is purely visual. The winner is decided in the parent component.
+        // Trigger the animation shortly after mount
+        const timer = setTimeout(() => setIsFlipping(true), 100);
+        return () => clearTimeout(timer);
     }, []);
 
-    const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: 'team1' | 'team2'}) => {
+    const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: TeamId }) => {
+        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+        const teamBgColor = teamId === 'team1' ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--accent) / 0.1)';
+
         if (teamLogo) {
             return <Image src={teamLogo} alt="Team Logo" fill className="object-contain p-4" />;
         }
-        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
         return <VersusLogo className="w-16 h-16" style={{ color: teamColor }} />;
     };
+
+    // Determine the final rotation based on the winner
+    const finalRotation = winner === 'team2' ? 'rotateY(3780deg)' : 'rotateY(3600deg)';
+    const staticRotation = winner === 'team2' ? 'rotateY(180deg)' : 'rotateY(0deg)';
+
+    const animationStyle = isStatic 
+    ? { transform: staticRotation, transition: 'transform 1s' }
+    : {
+        animation: isFlipping ? `flip 3s cubic-bezier(0.3, 0, 0.3, 1) forwards` : 'none',
+      };
 
     return (
         <div className="flex flex-col items-center justify-center h-full gap-4 p-4 animate-in fade-in-50 duration-500">
@@ -39,12 +56,12 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFli
                     height: 120px;
                     position: relative;
                     transform-style: preserve-3d;
-                    animation: ${isFlipping ? 'flip 3s cubic-bezier(0.3, 0, 0.3, 1) forwards' : 'none'};
                 }
                 .coin-face {
                     position: absolute;
                     width: 100%;
                     height: 100%;
+                    -webkit-backface-visibility: hidden;
                     backface-visibility: hidden;
                     display: flex;
                     align-items: center;
@@ -63,11 +80,11 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFli
                 }
                 @keyframes flip {
                     0% { transform: rotateY(0); }
-                    100% { transform: rotateY(3600deg); }
+                    100% { transform: ${finalRotation}; }
                 }
             `}</style>
             <div className="coin-container">
-                <div className={cn("coin")}>
+                <div className="coin" style={animationStyle}>
                     <div className="coin-face front">
                         <CoinFace teamLogo={team1Logo} teamId="team1"/>
                     </div>
@@ -77,7 +94,7 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFli
                 </div>
             </div>
             <p className="font-headline text-xl sm:text-2xl mt-4 text-center">
-                Lanzando la moneda...
+                {isStatic ? `El primer elector es ${winner === 'team1' ? team1Name : team2Name}` : (isFlipping ? 'Lanzando la moneda...' : '¡Prepárate!')}
             </p>
         </div>
     );

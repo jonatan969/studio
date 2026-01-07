@@ -57,6 +57,7 @@ export interface Room {
     team2Logo: string;
     playersPerTeam: number;
     spectatorLimit: number;
+    firstPickerSetting: 'random' | 'team1' | 'team2';
     phase: 'PREP' | 'COIN_FLIP' | 'DRAFTING' | 'SUPER_ART' | 'REVEAL' | 'FINISHED' | 'CANCELED';
     // players and picks are now subcollections
     firstPicker?: 'team1' | 'team2';

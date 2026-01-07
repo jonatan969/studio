@@ -14,10 +14,11 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shuffle, UserCheck } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { Room, RoomPlayer } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 const createRoomSchema = z.object({
   roomName: z.string().min(3, 'El nombre de la sala debe tener al menos 3 caracteres'),
@@ -28,6 +29,7 @@ const createRoomSchema = z.object({
   team1Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 1').or(z.literal('')),
   team2Logo: z.string().url('Por favor, introduce una URL válida para el logo del Equipo 2').or(z.literal('')),
   joinPreference: z.enum(['team1', 'team2', 'spectator']),
+  firstPickerSetting: z.enum(['random', 'team1', 'team2']),
 });
 
 type CreateRoomForm = z.infer<typeof createRoomSchema>;
@@ -62,6 +64,7 @@ export default function CreateRoomPage() {
       team1Logo: '',
       team2Logo: '',
       joinPreference: 'team1',
+      firstPickerSetting: 'random',
     },
   });
 
@@ -91,6 +94,7 @@ export default function CreateRoomPage() {
             team2Logo: data.team2Logo,
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
+            firstPickerSetting: data.firstPickerSetting,
             phase: 'PREP',
             log: ['Sala creada. Esperando jugadores...'],
         };
@@ -135,7 +139,7 @@ export default function CreateRoomPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
               <div className="space-y-2">
                 <Label htmlFor="roomName">Nombre de la Sala</Label>
-                <Input id="roomName" {...register('roomName')} />
+                <Input id="roomName" {...register('roomName')} autoComplete="off" />
                 {errors.roomName && <p className="text-destructive text-sm">{errors.roomName.message}</p>}
               </div>
 
@@ -144,7 +148,7 @@ export default function CreateRoomPage() {
                   <h3 className="font-headline text-xl text-orange-400">Equipo 1</h3>
                   <div className="space-y-2">
                     <Label htmlFor="team1Name">Nombre del Equipo</Label>
-                    <Input id="team1Name" {...register('team1Name')} />
+                    <Input id="team1Name" {...register('team1Name')} autoComplete="off"/>
                     {errors.team1Name && <p className="text-destructive text-sm">{errors.team1Name.message}</p>}
                   </div>
                   <div className="space-y-2">
@@ -158,7 +162,7 @@ export default function CreateRoomPage() {
                   <h3 className="font-headline text-xl text-purple-400">Equipo 2</h3>
                   <div className="space-y-2">
                     <Label htmlFor="team2Name">Nombre del Equipo</Label>
-                    <Input id="team2Name" {...register('team2Name')} />
+                    <Input id="team2Name" {...register('team2Name')} autoComplete="off"/>
                      {errors.team2Name && <p className="text-destructive text-sm">{errors.team2Name.message}</p>}
                   </div>
                    <div className="space-y-2">
@@ -202,9 +206,42 @@ export default function CreateRoomPage() {
                   )}
                 />
               </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <Label>Prioridad de Elección</Label>
+                 <Controller
+                  name="firstPickerSetting"
+                  control={control}
+                  render={({ field }) => (
+                    <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                    >
+                        <Label className="flex flex-col items-center justify-center text-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
+                            <RadioGroupItem value="random" id="random" className='sr-only' />
+                            <Shuffle className="h-6 w-6" />
+                            Al Azar (Sorteo)
+                        </Label>
+                        <Label className="flex flex-col items-center justify-center text-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-orange-500 has-[input:checked]:border-orange-500 has-[input:checked]:bg-orange-500/10">
+                            <RadioGroupItem value="team1" id="pick_team1" className='sr-only' />
+                            <UserCheck className="h-6 w-6 text-orange-400" />
+                            {team1Name || 'Equipo 1'}
+                        </Label>
+                        <Label className="flex flex-col items-center justify-center text-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-purple-500 has-[input:checked]:border-purple-500 has-[input:checked]:bg-purple-500/10">
+                            <RadioGroupItem value="team2" id="pick_team2" className='sr-only' />
+                            <UserCheck className="h-6 w-6 text-purple-400" />
+                            {team2Name || 'Equipo 2'}
+                        </Label>
+                    </RadioGroup>
+                  )}
+                 />
+              </div>
               
               <div className="space-y-4">
-                <Label>¿Cómo quieres unirte?</Label>
+                <Label>¿Cómo quieres unirte tú?</Label>
                  <Controller
                   name="joinPreference"
                   control={control}
@@ -215,15 +252,15 @@ export default function CreateRoomPage() {
                         className="flex flex-col sm:flex-row gap-4"
                     >
                         <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
-                            <RadioGroupItem value="team1" id="team1" />
+                            <RadioGroupItem value="team1" id="join_team1" />
                             Unirse a {team1Name || 'Equipo 1'}
                         </Label>
                         <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
-                            <RadioGroupItem value="team2" id="team2" />
+                            <RadioGroupItem value="team2" id="join_team2" />
                             Unirse a {team2Name || 'Equipo 2'}
                         </Label>
                          <Label className="flex items-center gap-2 p-3 sm:p-4 border rounded-lg cursor-pointer hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-primary/10">
-                            <RadioGroupItem value="spectator" id="spectator" />
+                            <RadioGroupItem value="spectator" id="join_spectator" />
                             Unirse como Espectador
                         </Label>
                     </RadioGroup>
@@ -241,5 +278,3 @@ export default function CreateRoomPage() {
     </div>
   );
 }
-
-    
