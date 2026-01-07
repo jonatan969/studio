@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
 import { DraftTimer } from '@/components/room/draft-timer';
-import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, DRAFT_START_TIMER, getPickOrder } from '@/lib/constants';
+import { DRAFT_PICK_TIME, SUPER_ART_PICK_TIME, COIN_FLIP_DURATION, getPickOrder } from '@/lib/constants';
 import { SuperArtSelector } from '@/components/room/super-art-selector';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import type { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
-import { doc, updateDoc, setDoc, deleteDoc, collection, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc, collection, arrayUnion, writeBatch } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -43,6 +43,8 @@ export default function RoomPage() {
   const [preselectedCharacter, setPreselectedCharacter] = useState<Character | null>(null);
 
   const lastProcessedTimestamp = useRef<number | null>(null);
+  const stateAdvancing = useRef(false);
+
 
   // --- Game Data ---
   const { characters, superArts, isLoading: isGameDataLoading } = useGameData();
@@ -84,15 +86,15 @@ export default function RoomPage() {
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !firestore || !userPlayerInfo) return;
     try {
+        const batch = writeBatch(firestore);
         const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
-        await deleteDoc(playerDocRef);
+        batch.delete(playerDocRef);
+        
         // If there was a pick associated, delete it as well
-        try {
-            const pickDocRef = doc(firestore, 'rooms', roomId, 'picks', user.uid);
-            await deleteDoc(pickDocRef);
-        } catch (e) {
-            // It's ok if the pick doesn't exist
-        }
+        const pickDocRef = doc(firestore, 'rooms', roomId, 'picks', user.uid);
+        batch.delete(pickDocRef);
+        
+        await batch.commit();
         
         router.push('/dashboard');
     } catch (error: any) {
@@ -103,28 +105,31 @@ export default function RoomPage() {
   // Admin logic: Cancel room if admin leaves or a player leaves mid-draft
   React.useEffect(() => {
     if (allDataLoading || !roomData || !user || !players || !roomRef) return;
+    if(roomData.phase === 'CANCELED' || roomData.phase === 'FINISHED') return;
     
-    // Condition to check for cancellation
     let shouldCancel = false;
+    let cancelMessage = '';
     
     // Check if admin is gone
     const adminIsGone = !players.some(p => p.uid === roomData.adminId);
     if(adminIsGone){
         shouldCancel = true;
+        cancelMessage = 'El administrador ha abandonado. El draft ha sido cancelado.';
     }
 
     // Check if a non-spectator player left after prep-phase
-    if (roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
+    if (roomData.phase !== 'PREP') {
         const requiredPlayerCount = roomData.playersPerTeam * 2;
         const currentNonSpectatorCount = players.filter(p => p.team !== 'spectator').length;
         if (currentNonSpectatorCount < requiredPlayerCount) {
             shouldCancel = true;
-            appendToLog('Un jugador abandonó. El draft ha sido cancelado.');
+            cancelMessage = 'Un jugador abandonó. El draft ha sido cancelado.';
         }
     }
     
-    if (shouldCancel && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
-        updateDoc(roomRef, { phase: 'CANCELED' });
+    if (shouldCancel) {
+        appendToLog(cancelMessage);
+        updateDoc(roomRef, { phase: 'CANCELED', turnEndsAt: null });
         return;
     }
   }, [players, roomData, user, allDataLoading, roomRef, appendToLog]);
@@ -182,10 +187,9 @@ export default function RoomPage() {
      if (!user || !firestore || !userPlayerInfo) return;
 
      const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
-     const updatedPlayer = { ...userPlayerInfo, team: team };
 
     try {
-        await setDoc(playerDocRef, updatedPlayer, { merge: true });
+        await updateDoc(playerDocRef, { team: team });
         setSwitchTeamDialogOpen(false);
         appendToLog(`${user.displayName} ha cambiado al equipo ${team}.`);
         toast({title: `Te cambiaste a ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData?.team1Name : roomData?.team2Name}`}`});
@@ -194,116 +198,138 @@ export default function RoomPage() {
     }
   };
 
+  const handleCoinFlipResult = useCallback(async (winner: TeamId) => {
+    if(!roomRef || !roomData) return;
+    const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
+    try {
+        await updateDoc(roomRef, { 
+            phase: 'DRAFTING', 
+            firstPicker: winner, 
+            pickOrder: pickOrder,
+            turn: 0,
+            currentPicker: pickOrder[0].team,
+            turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
+        });
+        const winnerTeamName = winner === 'team1' ? roomData.team1Name : roomData.team2Name;
+        appendToLog(`¡${winnerTeamName} ganó el sorteo y elegirá primero!`);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error de Sincronización', description: error.message });
+    }
+  }, [roomRef, roomData, appendToLog, toast]);
+
   // State machine effect
   React.useEffect(() => {
-      if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks || !characters) return;
-            
-      const isAdmin = user.uid === roomData.adminId;
-      if (!isAdmin) return; // Only admin should advance state
-
-      if (roomData.phase === 'PREP') {
-        const team1Players = players.filter(p => p.team === 'team1').length;
-        const team2Players = players.filter(p => p.team === 'team2').length;
-        if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
-            updateDoc(roomRef, { phase: 'COIN_FLIP', turnEndsAt: Date.now() + DRAFT_START_TIMER * 1000 });
-            appendToLog(`¡Los equipos están completos! La cuenta atrás ha comenzado.`);
-        }
-      }
-
-      if (roomData.phase === 'COIN_FLIP') {
-        const team1Players = players.filter(p => p.team === 'team1').length;
-        const team2Players = players.filter(p => p.team === 'team2').length;
-        if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
-            updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null });
-            appendToLog(`Alguien se fue. Reiniciando cuenta atrás.`);
-        }
-      }
+      if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks || !characters || stateAdvancing.current) return;
       
-      if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
-          lastProcessedTimestamp.current = roomData.turnEndsAt;
-          
-          switch(roomData.phase) {
-              case 'COIN_FLIP':
-                  handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2');
-                  break;
-              case 'DRAFTING':
-                  if (roomData.turn === undefined || !roomData.pickOrder || !roomData.currentPicker || !firestore || !picksRef) break;
-                  
-                  const picksExpectedThisTurn = roomData.pickOrder[roomData.turn].picks;
-                  const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
-                  const picksToAutoSelect = picksExpectedThisTurn - picksMadeThisTurn;
+      const isAdmin = user.uid === roomData.adminId;
+      if (!isAdmin) return;
 
-                  if(picksToAutoSelect <= 0) break;
-                  
-                  const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
-                  const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(pick => pick.pickedBy === p.uid));
-                  
-                  if (playersOnTeamWhoHaventPicked.length > 0) {
-                      const pickedCharacterIds = draftPicks.map(p => p.characterId);
-                      const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
-                      
-                      for (let i = 0; i < picksToAutoSelect; i++) {
-                          const playerToPick = playersOnTeamWhoHaventPicked[i];
-                          if (!playerToPick) continue;
-                          
-                          const randomCharacter = availableCharacters[i % availableCharacters.length];
-                          if (!randomCharacter) continue;
-
-                           const pickData: Omit<DraftPick, 'id'> = {
-                                turn: roomData.turn,
-                                characterId: randomCharacter.id,
-                                pickedBy: playerToPick.uid,
-                                nickname: playerToPick.nickname,
-                                team: roomData.currentPicker,
-                                pickOrder: draftPicks.length + i + 1,
-                           };
-                           const pickDocRef = doc(picksRef, playerToPick.uid);
-                           setDoc(pickDocRef, pickData).catch(e => console.error("Error auto-picking character:", e));
-                           appendToLog(`¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`);
-                      }
-                  }
-                  break;
-              case 'SUPER_ART':
-                   updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
-                   appendToLog('¡El tiempo de selección de Super Art ha terminado! Revelando elecciones...');
-                   break;
+      const advanceState = async () => {
+        stateAdvancing.current = true;
+        switch(roomData.phase) {
+          case 'PREP': {
+            const team1Players = players.filter(p => p.team === 'team1').length;
+            const team2Players = players.filter(p => p.team === 'team2').length;
+            if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
+                await updateDoc(roomRef, { phase: 'COIN_FLIP', turnEndsAt: Date.now() + COIN_FLIP_DURATION * 1000 });
+                await appendToLog(`¡Los equipos están completos! Lanzando la moneda...`);
+            }
+            break;
           }
-      }
+          case 'COIN_FLIP': {
+            if (timeLeft <= 0) {
+              const team1Players = players.filter(p => p.team === 'team1').length;
+              const team2Players = players.filter(p => p.team === 'team2').length;
+              if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
+                  await updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null });
+                  await appendToLog(`Alguien se fue. Reiniciando preparativos.`);
+              } else if (roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
+                  lastProcessedTimestamp.current = roomData.turnEndsAt;
+                  await handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2');
+              }
+            }
+            break;
+          }
+          case 'DRAFTING': {
+            if (roomData.turn === undefined || !roomData.pickOrder) break;
+            
+            const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
+            const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
+            
+            if (picksMadeThisTurn >= picksExpectedThisTurn) {
+                const newTurn = roomData.turn + 1;
+                const totalPlayers = roomData.playersPerTeam * 2;
+                const totalPicksMade = draftPicks.length;
 
-  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, appendToLog]);
+                if (newTurn >= roomData.pickOrder.length || totalPicksMade >= totalPlayers) {
+                    await updateDoc(roomRef, { phase: 'SUPER_ART', turnEndsAt: Date.now() + SUPER_ART_PICK_TIME * 1000, currentPicker: null });
+                    await appendToLog('¡Todos los personajes seleccionados! Hora de elegir los Super Arts.');
+                } else {
+                    const nextTurnInfo = roomData.pickOrder[newTurn];
+                    await updateDoc(roomRef, { 
+                        turn: newTurn, 
+                        currentPicker: nextTurnInfo.team, 
+                        turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
+                    });
+                    const nextTeamName = nextTurnInfo.team === 'team1' ? roomData.team1Name : roomData.team2Name;
+                    await appendToLog(`Es el turno de ${nextTeamName} para elegir.`);
+                }
+            } else if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
+                lastProcessedTimestamp.current = roomData.turnEndsAt;
+                
+                const currentTeamPlayers = players.filter(p => p.team === roomData.currentPicker);
+                const playersOnTeamWhoHaventPicked = currentTeamPlayers.filter(p => !draftPicks.some(pick => pick.pickedBy === p.uid && pick.turn === roomData.turn));
+                const picksToAutoSelect = picksExpectedThisTurn - picksMadeThisTurn;
+                
+                if (playersOnTeamWhoHaventPicked.length > 0 && picksToAutoSelect > 0) {
+                    const pickedCharacterIds = draftPicks.map(p => p.characterId);
+                    const availableCharacters = characters.filter(c => !pickedCharacterIds.includes(c.id));
+                    
+                    for (let i = 0; i < picksToAutoSelect; i++) {
+                        const playerToPick = playersOnTeamWhoHaventPicked[i];
+                        if (!playerToPick) continue;
+                        
+                        const randomCharacter = availableCharacters[i % availableCharacters.length];
+                        if (!randomCharacter) continue;
 
-  // Turn progression logic
-  React.useEffect(() => {
-    if(allDataLoading || !roomData || !roomRef || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder || !user || !draftPicks || !players) return;
-    
-    const isAdmin = user.uid === roomData.adminId;
-    if (!isAdmin) return;
+                         const pickData: Omit<DraftPick, 'id'> = {
+                              turn: roomData.turn,
+                              characterId: randomCharacter.id,
+                              pickedBy: playerToPick.uid,
+                              nickname: playerToPick.nickname,
+                              team: roomData.currentPicker as TeamId,
+                              pickOrder: draftPicks.length + i + 1,
+                         };
+                         const pickDocRef = doc(picksRef, playerToPick.uid);
+                         setDoc(pickDocRef, pickData).catch(e => console.error("Error auto-picking character:", e));
+                         appendToLog(`¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`);
+                    }
+                }
+            }
+            break;
+          }
+          case 'SUPER_ART': {
+            const nonSpectatorPlayersCount = players.filter(p => p.team !== 'spectator').length;
+            const picksWithSuperArtCount = draftPicks.filter(p => !!p.superArtId).length;
 
-    const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
-    const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
-    
-    if (picksExpectedThisTurn === undefined) return;
-    
-    if (picksMadeThisTurn >= picksExpectedThisTurn) {
-         const newTurn = roomData.turn + 1;
-         const totalPlayers = roomData.playersPerTeam * 2;
-         const nonSpectatorPicks = draftPicks.length;
+            if (picksWithSuperArtCount >= nonSpectatorPlayersCount) {
+              await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
+              await appendToLog('¡Todos los Super Arts seleccionados! ¡La revelación final!');
+            } else if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
+              lastProcessedTimestamp.current = roomData.turnEndsAt;
+              await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
+              await appendToLog('¡El tiempo de selección de Super Art ha terminado! Revelando elecciones...');
+            }
+            break;
+          }
+        }
+        stateAdvancing.current = false;
+      };
 
-         if (newTurn >= roomData.pickOrder.length || nonSpectatorPicks >= totalPlayers) {
-              updateDoc(roomRef, { phase: 'SUPER_ART', turnEndsAt: Date.now() + SUPER_ART_PICK_TIME * 1000, currentPicker: null });
-              appendToLog('¡Todos los personajes seleccionados! Hora de elegir los Super Arts.');
-         } else {
-             const nextTurnInfo = roomData.pickOrder[newTurn];
-             updateDoc(roomRef, { 
-                turn: newTurn, 
-                currentPicker: nextTurnInfo.team, 
-                turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
-            });
-             const nextTeamName = nextTurnInfo.team === 'team1' ? roomData.team1Name : roomData.team2Name;
-             appendToLog(`Es el turno de ${nextTeamName} para elegir.`);
-         }
-    }
-  }, [roomData, roomRef, draftPicks, allDataLoading, players, user, appendToLog]);
+      advanceState();
+
+  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, appendToLog, handleCoinFlipResult]);
+
 
     React.useEffect(() => {
         if (timeLeft <= 0 && roomData?.phase === 'DRAFTING' && preselectedCharacter && canPick) {
@@ -362,47 +388,11 @@ export default function RoomPage() {
     try {
         await updateDoc(pickDocRef, { superArtId: art.id });
         toast({title: '¡Super Art Confirmado!'});
-        
-        // This is a client-side prediction to check if we can advance the phase early
-        const nonSpectatorPlayers = players?.filter(p => p.team !== 'spectator');
-        // Create an updated version of the picks array including the one we just submitted
-        const updatedPicksWithMyArt = draftPicks.map(p => 
-            p.pickedBy === user.uid ? { ...p, superArtId: art.id } : p
-        );
-        const picksWithSuperArt = updatedPicksWithMyArt.filter(p => p.superArtId);
-        
-        // Only the admin should trigger the phase change
-        const isAdmin = user.uid === roomData.adminId;
-        if (isAdmin && nonSpectatorPlayers && picksWithSuperArt.length >= nonSpectatorPlayers.length) { 
-            await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
-            appendToLog('¡Todos los Super Arts seleccionados! ¡La revelación final!');
-        }
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error al seleccionar Super Art', description: error.message });
     }
   }
 
-  const handleCoinFlipResult = async (winner: TeamId) => {
-    if(roomRef && roomData && user && user.uid === roomData.adminId) {
-        if (roomData.phase !== 'COIN_FLIP') return;
-        
-        const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
-        try {
-            await updateDoc(roomRef, { 
-                phase: 'DRAFTING', 
-                firstPicker: winner, 
-                pickOrder: pickOrder,
-                turn: 0,
-                currentPicker: pickOrder[0].team,
-                turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
-            });
-            const winnerTeamName = winner === 'team1' ? roomData.team1Name : roomData.team2Name;
-            appendToLog(`¡${winnerTeamName} ganó el sorteo y elegirá primero!`);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error de Sincronización', description: error.message });
-        }
-    }
-  }
   
   const handleCompleteReveal = async () => {
     if (roomRef && roomData && roomData.phase !== 'FINISHED' && user && user.uid === roomData.adminId) {
@@ -440,7 +430,7 @@ export default function RoomPage() {
     if (!roomData) return '';
     switch (roomData.phase) {
       case 'PREP': return `Esperando jugadores...`;
-      case 'COIN_FLIP': return `El draft comienza en...`;
+      case 'COIN_FLIP': return `Lanzando la moneda...`;
       case 'DRAFTING': return 'Fase de Elección';
       case 'SUPER_ART': return 'Selección de Super Art';
       case 'REVEAL': return 'La Revelación';

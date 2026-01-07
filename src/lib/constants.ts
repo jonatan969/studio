@@ -1,7 +1,8 @@
 export const DRAFT_PICK_TIME = 90; // 90 seconds
 export const SUPER_ART_PICK_TIME = 60; // 1 minute
 export const ROOM_CLOSE_TIME = 60; // 1 minute
-export const DRAFT_START_TIMER = 10; // 10 seconds
+export const DRAFT_START_TIMER = 10; // 10 seconds - DEPRECATED, but kept for reference
+export const COIN_FLIP_DURATION = 5; // 5 seconds for the coin flip animation phase
 
 type TeamId = 'team1' | 'team2';
 
