@@ -27,8 +27,6 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, i
 
     const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: TeamId }) => {
         const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
-        const teamBgColor = teamId === 'team1' ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--accent) / 0.1)';
-
         if (teamLogo) {
             return <Image src={teamLogo} alt="Team Logo" fill className="object-contain p-4" />;
         }
