@@ -21,10 +21,10 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFli
     }, []);
 
     const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: 'team1' | 'team2'}) => {
-        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
         if (teamLogo) {
             return <Image src={teamLogo} alt="Team Logo" fill className="object-contain p-4" />;
         }
+        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
         return <VersusLogo className="w-16 h-16" style={{ color: teamColor }} />;
     };
 
@@ -50,13 +50,14 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFli
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
-                    background-color: hsl(var(--card));
-                    border: 4px solid;
+                    border-width: 4px;
                 }
                 .front {
+                    background-color: hsl(var(--primary) / 0.1);
                     border-color: hsl(var(--primary));
                 }
                 .back {
+                    background-color: hsl(var(--accent) / 0.1);
                     border-color: hsl(var(--accent));
                     transform: rotateY(180deg);
                 }
