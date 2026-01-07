@@ -197,23 +197,6 @@ export default function RoomPage() {
     }
   };
 
-  const startDraftPhase = useCallback(async (winner: TeamId) => {
-    if(!roomRef || !roomData) return;
-    const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
-    try {
-        await updateDoc(roomRef, { 
-            phase: 'DRAFTING', 
-            firstPicker: winner, 
-            pickOrder: pickOrder,
-            turn: 0,
-            currentPicker: pickOrder[0].team,
-            turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
-            log: arrayUnion(`¡${winner === 'team1' ? roomData.team1Name : roomData.team2Name} ganó el sorteo y elegirá primero!`)
-        });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error de Sincronización', description: error.message });
-    }
-  }, [roomRef, roomData, toast]);
 
   // State machine effect
   React.useEffect(() => {
@@ -228,12 +211,12 @@ export default function RoomPage() {
           case 'PREP': {
             const team1Players = players.filter(p => p.team === 'team1').length;
             const team2Players = players.filter(p => p.team === 'team2').length;
-            if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
-                
+            const teamsAreFull = team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam;
+
+            if (teamsAreFull) {
                 let winner: TeamId;
                 if (roomData.firstPickerSetting === 'random') {
-                    const seconds = new Date().getSeconds();
-                    winner = seconds % 2 === 0 ? 'team1' : 'team2';
+                    winner = Math.floor(Math.random() * 2) === 0 ? 'team1' : 'team2';
                 } else {
                     winner = roomData.firstPickerSetting;
                 }
@@ -251,9 +234,16 @@ export default function RoomPage() {
             if (timeLeft <= 0 && roomData.turnEndsAt && roomData.turnEndsAt !== lastProcessedTimestamp.current) {
                 lastProcessedTimestamp.current = roomData.turnEndsAt;
                 
-                // Winner is already decided, just start the draft
                 if (roomData.firstPicker) {
-                    await startDraftPhase(roomData.firstPicker);
+                    const pickOrder = getPickOrder(roomData.playersPerTeam, roomData.firstPicker);
+                    await updateDoc(roomRef, { 
+                        phase: 'DRAFTING', 
+                        pickOrder: pickOrder,
+                        turn: 0,
+                        currentPicker: pickOrder[0].team,
+                        turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
+                        log: arrayUnion(`¡${roomData.firstPicker === 'team1' ? roomData.team1Name : roomData.team2Name} ganó el sorteo y elegirá primero!`)
+                    });
                 }
             }
             break;
@@ -349,7 +339,7 @@ export default function RoomPage() {
 
       advanceState();
 
-  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, startDraftPhase]);
+  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef]);
 
 
     React.useEffect(() => {
