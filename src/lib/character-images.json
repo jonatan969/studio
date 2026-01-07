@@ -1,17 +1,17 @@
 {
     "images": [
-        { "id": "char-bombardero", "url": "https://images.unsplash.com/photo-1618609385019-e41829949efa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjeWJvcmclMjBzb2xkaWVyfGVufDB8fHx8MTc2NzE3NTQ2Nnww&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-espadachin", "url": "https://images.unsplash.com/photo-1701393278241-e2345b5585b6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxkZW1vbmljJTIwc3dvcmRzbWFufGVufDB8fHx8MTc2NzE3NTQ5OHww&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-piloto", "url": "https://images.unsplash.com/photo-1639702117551-863488a03f44?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxiZWFzdCUyMG1hc3RlcnxlbnwwfHx8fDE3NjcxNzU1MjR8MA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-arquero", "url": "https://images.unsplash.com/photo-1620972403067-6c61eda75b6e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzcGlyaXQlMjBhcmNoZXJ8ZW58MHx8fHwxNzY3MTc1NTUwfDA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-cazador", "url": "https://images.unsplash.com/photo-1644781033285-6442650f385c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx0b3hpYyUyMHRyYXBwZXJ8ZW58MHx8fHwxNzY3MTc1NTcxfDA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-ninja", "url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG5pbmphfGVufDB8fHx8MTc2NzE3NTU5NXww&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-paladin", "url": "https://images.unsplash.com/photo-1596728325494-9549558336b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxob2x5JTIwa25pZ2h0fGVufDB8fHx8MTc2NzE3NTYyMHww&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-salvaje", "url": "https://images.unsplash.com/photo-1719527690333-e50ba9a3e218?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxncmF2aXR5JTIwYnJ1aXNlcnxlbnwwfHx8fDE3NjcxNzU2NDJ8MA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-piromano", "url": "https://images.unsplash.com/photo-1632832364402-941c45508b53?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxmaXJlJTIwZWxlbWVudGFsfGVufDB8fHx8MTc2NzE3NTY2NHww&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-ahogado", "url": "https://images.unsplash.com/photo-1635324239840-3bce5533513e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxvY2VhbmljJTIwd2FycmlvcnxlbnwwfHx8fDE3NjcxNzU2ODZ8MA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-clerigo", "url": "https://images.unsplash.com/photo-1698083894458-29363d6b052d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzcGFjZSUyMGJlbmRlcnxlbnwwfHx8fDE3NjcxNzU3MDR8MA&ixlib=rb-4.1.0&q=80&w=1080" },
-        { "id": "char-explorador", "url": "https://images.unsplash.com/photo-1604753556485-645842c11874?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxoZWxsJTIwc3VtbW9uZXJ8ZW58MHx8fHwxNzY3MTc1NzMwfDA&ixlibrb-4.1.0&q=80&w=1080" },
-        { "id": "char-bruja", "url": "https://images.unsplash.com/photo-1601655753434-23a5e66966a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjdXJzZSUyMHdpdGNofGVufDB8fHx8MTc2NzE3NTc1Mnww&ixlib=rb-4.1.0&q=80&w=1080" }
+        { "id": "char-bombardero", "url": "https://i.imgur.com/NQBm5G2.png" },
+        { "id": "char-espadachin", "url": "https://i.imgur.com/8Qe5d5Q.png" },
+        { "id": "char-piloto", "url": "https://i.imgur.com/yG1TfA0.png" },
+        { "id": "char-arquero", "url": "https://i.imgur.com/h5r8USx.png" },
+        { "id": "char-cazador", "url": "https://i.imgur.com/vH3sYI7.png" },
+        { "id": "char-ninja", "url": "https://i.imgur.com/kS9T7gR.png" },
+        { "id": "char-paladin", "url": "https://i.imgur.com/9lqgMv0.png" },
+        { "id": "char-salvaje", "url": "https://i.imgur.com/Sj2rYyD.png" },
+        { "id": "char-piromano", "url": "https://i.imgur.com/7YhNkoz.png" },
+        { "id": "char-ahogado", "url": "https://i.imgur.com/L7p2mHb.png" },
+        { "id": "char-clerigo", "url": "https://i.imgur.com/W3Qk8AS.png" },
+        { "id": "char-explorador", "url": "https://i.imgur.com/rM7dYwI.png" },
+        { "id": "char-bruja", "url": "https://i.imgur.com/zW3bO7I.png" }
     ]
 }
