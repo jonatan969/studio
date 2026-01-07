@@ -110,10 +110,11 @@ export default function RoomPage() {
   // Admin logic: Cancel room if admin leaves
   React.useEffect(() => {
     if (allDataLoading || !roomData || !user || !players || !roomRef) return;
-    const adminStillInRoom = players.some(p => p.uid === roomData.adminId);
+    
+    const adminIsGone = !players.some(p => p.uid === roomData.adminId);
     
     // If the admin is the one leaving, the room is cancelled
-    if (user.uid === roomData.adminId && !adminStillInRoom && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
+    if (adminIsGone && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
       updateDoc(roomRef, { phase: 'CANCELED' });
       return;
     }
@@ -193,7 +194,7 @@ export default function RoomPage() {
 
   // State machine effect
   React.useEffect(() => {
-      if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks) return;
+      if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks || !characters) return;
             
       const isAdmin = user.uid === roomData.adminId;
       if (!isAdmin) return; // Only admin should advance state
@@ -360,14 +361,17 @@ export default function RoomPage() {
         await updateDoc(pickDocRef, { superArtId: art.id });
         toast({title: '¡Super Art Confirmado!'});
         
-        const isAdmin = user.uid === roomData.adminId;
-        if (!isAdmin) return;
-
+        // This is a client-side prediction to check if we can advance the phase early
         const nonSpectatorPlayers = players?.filter(p => p.team !== 'spectator');
-        const updatedPicks = [...draftPicks.filter(p => p.pickedBy !== user.uid), { ...myPick, superArtId: art.id }];
-        const picksWithSuperArt = updatedPicks.filter(p => p.superArtId);
+        // Create an updated version of the picks array including the one we just submitted
+        const updatedPicksWithMyArt = draftPicks.map(p => 
+            p.pickedBy === user.uid ? { ...p, superArtId: art.id } : p
+        );
+        const picksWithSuperArt = updatedPicksWithMyArt.filter(p => p.superArtId);
         
-        if (nonSpectatorPlayers && picksWithSuperArt.length >= nonSpectatorPlayers.length) { 
+        // Only the admin should trigger the phase change
+        const isAdmin = user.uid === roomData.adminId;
+        if (isAdmin && nonSpectatorPlayers && picksWithSuperArt.length >= nonSpectatorPlayers.length) { 
             await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
             dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
         }
@@ -459,9 +463,9 @@ export default function RoomPage() {
   const isMySuperArtSubmitted = !!myPick?.superArtId;
 
   const canPick = userPlayerInfo && userPlayerInfo.team !== 'spectator' &&
-                  roomData.phase === 'DRAFTING' && roomData.currentPicker === userPlayerInfo.team &&
-                  !draftPicks.some(p => p.pickedBy === user?.uid) &&
-                  (draftPicks.filter(p => p.turn === roomData.turn).length || 0) < (roomData.pickOrder?.[roomData.turn || 0]?.picks || 0);
+                  roomData.phase === 'DRAFTING' && 
+                  roomData.currentPicker === userPlayerInfo.team &&
+                  !draftPicks.some(p => p.pickedBy === user?.uid);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -489,7 +493,15 @@ export default function RoomPage() {
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center min-h-[300px] lg:min-h-0">
-            {roomData.phase === 'COIN_FLIP' && <CoinFlip onComplete={() => handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2')} team1Name={roomData.team1Name} team2Name={roomData.team2Name}/>}
+            {roomData.phase === 'COIN_FLIP' && (
+                <CoinFlip 
+                    onComplete={() => handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2')} 
+                    team1Name={roomData.team1Name} 
+                    team2Name={roomData.team2Name}
+                    team1Logo={roomData.team1Logo}
+                    team2Logo={roomData.team2Logo}
+                />
+            )}
             
             {roomData.phase === 'DRAFTING' && (
                 <CharacterGrid

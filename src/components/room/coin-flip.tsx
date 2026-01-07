@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { VersusLogo } from "../icons/logo";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface CoinFlipProps {
     onComplete: (winner: 'team1' | 'team2') => void;
     team1Name: string;
     team2Name: string;
+    team1Logo?: string | null;
+    team2Logo?: string | null;
 }
 
-export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
+export function CoinFlip({ onComplete, team1Name, team2Name, team1Logo, team2Logo }: CoinFlipProps) {
     const [isFlipping, setIsFlipping] = useState(false);
     const [result, setResult] = useState<'team1' | 'team2' | null>(null);
 
@@ -21,12 +24,12 @@ export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
         const flipTimeout = setTimeout(() => {
             setResult(winner);
             setIsFlipping(false);
-        }, 3000); // Animation duration
+        }, 3000); // Animation duration: 3 seconds
 
         return () => {
             clearTimeout(flipTimeout);
         };
-    }, []); // Removed onComplete from dependencies to control flow manually
+    }, []);
 
     useEffect(() => {
         if (result) {
@@ -37,6 +40,14 @@ export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
             return () => clearTimeout(completeTimeout);
         }
     }, [result, onComplete]);
+
+    const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: 'team1' | 'team2'}) => {
+        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+        if (teamLogo) {
+            return <Image src={teamLogo} alt="Team Logo" fill className="object-contain p-4" />;
+        }
+        return <VersusLogo className="w-16 h-16" style={{ color: teamColor }} />;
+    };
 
     return (
         <div className="flex flex-col items-center justify-center h-full gap-4 p-4 animate-in fade-in-50 duration-500">
@@ -49,7 +60,7 @@ export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
                     height: 120px;
                     position: relative;
                     transform-style: preserve-3d;
-                    animation: ${isFlipping ? 'flip 3s ease-out forwards' : 'none'};
+                    animation: ${isFlipping ? 'flip 3s cubic-bezier(0.3, 0, 0.3, 1) forwards' : 'none'};
                 }
                 .coin-face {
                     position: absolute;
@@ -60,29 +71,28 @@ export function CoinFlip({ onComplete, team1Name, team2Name }: CoinFlipProps) {
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
-                    border: 4px solid hsl(var(--primary));
+                    background-color: hsl(var(--card));
+                    border: 4px solid;
                 }
                 .front {
-                    background-color: hsl(var(--ring));
-                    color: white;
+                    border-color: hsl(var(--primary));
                 }
                 .back {
-                    background-color: hsl(var(--accent));
-                    color: white;
+                    border-color: hsl(var(--accent));
                     transform: rotateY(180deg);
                 }
                 @keyframes flip {
                     0% { transform: rotateY(0); }
-                    100% { transform: rotateY(1800deg); }
+                    100% { transform: rotateY(3600deg); }
                 }
             `}</style>
             <div className="coin-container">
                 <div className={cn("coin", result && "transition-transform duration-500", result === 'team1' ? 'rotate-y-0' : 'rotate-y-180' )}>
                     <div className="coin-face front">
-                        <VersusLogo className="w-16 h-16" />
+                        <CoinFace teamLogo={team1Logo} teamId="team1"/>
                     </div>
                     <div className="coin-face back">
-                        <VersusLogo className="w-16 h-16" />
+                       <CoinFace teamLogo={team2Logo} teamId="team2"/>
                     </div>
                 </div>
             </div>
