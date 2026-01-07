@@ -1,8 +1,7 @@
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DraftPick, SuperArt, Character } from "@/lib/types";
-import { SuperArtIcon } from "./super-art-icon";
-import { SUPER_ARTS, CHARACTERS } from "@/lib/game-data";
+import { useGameData } from "@/lib/game-data";
 
 type CombinedPick = DraftPick & Partial<Character> & { superArt: SuperArt | null };
 
@@ -13,11 +12,12 @@ interface SuperArtSpectatorViewProps {
 }
 
 export function SuperArtSpectatorView({ allPicks, team1Name, team2Name }: SuperArtSpectatorViewProps) {
+    const { characters, superArts } = useGameData();
 
     const getTeamPicks = (teamId: 'team1' | 'team2'): CombinedPick[] => {
         return allPicks.filter(p => p.team === teamId).map(pick => {
-            const character = CHARACTERS.find(c => c.id === pick.characterId);
-            const superArt = pick.superArtId ? SUPER_ARTS.find(sa => sa.id === pick.superArtId) : null;
+            const character = characters.find(c => c.id === pick.characterId);
+            const superArt = pick.superArtId ? superArts.find(sa => sa.id === pick.superArtId) : null;
             return {
                 ...pick,
                 name: character?.name || 'Unknown',

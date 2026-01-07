@@ -4,16 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { User, ShieldCheck } from 'lucide-react';
-import { RoomPlayer, DraftPick } from '@/lib/types';
+import { RoomPlayer } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
+interface PickWithCharacterData {
+    characterId: string;
+    pickedBy: string;
+    nickname: string;
+    team: 'team1' | 'team2';
+    pickOrder: number;
+    turn: number;
+    superArtId?: string | undefined;
+    name: string;
+    image: string;
+}
 
 interface TeamDisplayProps {
   teamName: string;
   teamId: 'team1' | 'team2';
   teamLogo?: string | null;
   players: RoomPlayer[];
-  picks: DraftPick[];
+  picks: PickWithCharacterData[];
   isPicking: boolean;
   maxPlayers: number;
 }

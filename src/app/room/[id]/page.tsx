@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SwitchTeamDialog } from '@/components/room/switch-team-dialog';
 import { DramaticReveal } from '@/components/room/dramatic-reveal';
 import { CharacterGrid } from '@/components/room/character-grid';
-import { CHARACTERS, SUPER_ARTS } from '@/lib/game-data';
+import { useGameData } from '@/lib/game-data';
 
 
 type TeamId = 'team1' | 'team2';
@@ -59,6 +59,9 @@ export default function RoomPage() {
 
   const lastProcessedTimestamp = useRef<number | null>(null);
 
+  // --- Game Data ---
+  const { characters, superArts, isLoading: isGameDataLoading } = useGameData();
+
   // --- Firestore References ---
   const roomRef = useMemoFirebase(() => firestore ? doc(firestore, 'rooms', roomId) : null, [firestore, roomId]);
   const playersRef = useMemoFirebase(() => firestore ? collection(firestore, 'rooms', roomId, 'players') : null, [firestore, roomId]);
@@ -69,12 +72,9 @@ export default function RoomPage() {
   const { data: players, isLoading: arePlayersLoading } = useCollection<RoomPlayer>(playersRef);
   const { data: draftPicks, isLoading: arePicksLoading } = useCollection<DraftPick>(picksRef);
 
-  const characters = CHARACTERS;
-  const superArts = SUPER_ARTS;
-
   const userPlayerInfo = useMemo(() => players?.find(p => p.uid === user?.uid), [players, user]);
 
-  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || arePicksLoading;
+  const allDataLoading = isRoomLoading || isUserLoading || arePlayersLoading || arePicksLoading || isGameDataLoading;
   
   React.useEffect(() => {
     if (roomError) {
@@ -109,12 +109,22 @@ export default function RoomPage() {
 
   // Admin logic: Cancel room if admin leaves
   React.useEffect(() => {
-    if (allDataLoading || !roomData || !user || !players) return;
-    const isAdmin = user.uid === roomData.adminId;
+    if (allDataLoading || !roomData || !user || !players || !roomRef) return;
     const adminStillInRoom = players.some(p => p.uid === roomData.adminId);
-
-    if (isAdmin && !adminStillInRoom && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
+    
+    // If the admin is the one leaving, the room is cancelled
+    if (user.uid === roomData.adminId && !adminStillInRoom && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
       updateDoc(roomRef, { phase: 'CANCELED' });
+      return;
+    }
+
+    // If a non-spectator player leaves after the draft has started, cancel it
+    if (roomData.phase !== 'PREP' && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
+        const currentNonSpectatorCount = players.filter(p => p.team !== 'spectator').length;
+        const requiredPlayerCount = roomData.playersPerTeam * 2;
+        if (currentNonSpectatorCount < requiredPlayerCount) {
+            updateDoc(roomRef, { phase: 'CANCELED' });
+        }
     }
   }, [players, roomData, user, allDataLoading, roomRef]);
 
@@ -185,12 +195,24 @@ export default function RoomPage() {
   React.useEffect(() => {
       if (allDataLoading || !roomData || !roomRef || !user || !players || !draftPicks) return;
             
+      const isAdmin = user.uid === roomData.adminId;
+      if (!isAdmin) return; // Only admin should advance state
+
       if (roomData.phase === 'PREP') {
         const team1Players = players.filter(p => p.team === 'team1').length;
         const team2Players = players.filter(p => p.team === 'team2').length;
         if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
             updateDoc(roomRef, { phase: 'COIN_FLIP', turnEndsAt: Date.now() + DRAFT_START_TIMER * 1000 });
             dispatch({type: 'LOG', message: `¡Los equipos están completos! La cuenta atrás ha comenzado.`});
+        }
+      }
+
+      if (roomData.phase === 'COIN_FLIP') {
+        const team1Players = players.filter(p => p.team === 'team1').length;
+        const team2Players = players.filter(p => p.team === 'team2').length;
+        if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
+            updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null });
+            dispatch({type: 'LOG', message: `Alguien se fue. Reiniciando cuenta atrás.`});
         }
       }
       
@@ -251,6 +273,9 @@ export default function RoomPage() {
   React.useEffect(() => {
     if(allDataLoading || !roomData || !roomRef || roomData.phase !== 'DRAFTING' || roomData.turn === undefined || !roomData.pickOrder || !user || !draftPicks || !players) return;
     
+    const isAdmin = user.uid === roomData.adminId;
+    if (!isAdmin) return;
+
     const picksMadeThisTurn = draftPicks.filter(p => p.turn === roomData.turn).length;
     const picksExpectedThisTurn = roomData.pickOrder[roomData.turn]?.picks;
     
@@ -325,7 +350,7 @@ export default function RoomPage() {
   };
   
   const handleSelectSuperArt = async (art: SuperArt) => {
-    if(!firestore || !user || !roomRef || !roomData || !draftPicks) return;
+    if(!firestore || !user || !roomRef || !roomData || !draftPicks || !players) return;
     
     const myPick = draftPicks.find(p => p.pickedBy === user.uid);
     if (!myPick) { toast({variant: 'destructive', title: 'No se puede seleccionar Super Art', description: "Aún no has elegido un personaje."}); return; }
@@ -335,10 +360,14 @@ export default function RoomPage() {
         await updateDoc(pickDocRef, { superArtId: art.id });
         toast({title: '¡Super Art Confirmado!'});
         
-        const nonSpectatorPlayers = players?.filter(p => p.team !== 'spectator');
-        const picksWithSuperArt = draftPicks.filter(p => p.superArtId).length + 1; // +1 for the current pick
+        const isAdmin = user.uid === roomData.adminId;
+        if (!isAdmin) return;
 
-        if (nonSpectatorPlayers && picksWithSuperArt >= nonSpectatorPlayers.length) { 
+        const nonSpectatorPlayers = players?.filter(p => p.team !== 'spectator');
+        const updatedPicks = [...draftPicks.filter(p => p.pickedBy !== user.uid), { ...myPick, superArtId: art.id }];
+        const picksWithSuperArt = updatedPicks.filter(p => p.superArtId);
+        
+        if (nonSpectatorPlayers && picksWithSuperArt.length >= nonSpectatorPlayers.length) { 
             await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
             dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
         }
@@ -348,7 +377,7 @@ export default function RoomPage() {
   }
 
   const handleCoinFlipResult = async (winner: TeamId) => {
-    if(roomRef && roomData) {
+    if(roomRef && roomData && user && user.uid === roomData.adminId) {
         if (roomData.phase !== 'COIN_FLIP') return;
         
         const pickOrder = getPickOrder(roomData.playersPerTeam, winner);
@@ -370,12 +399,12 @@ export default function RoomPage() {
   }
   
   const handleCompleteReveal = async () => {
-    if (roomRef && roomData && roomData.phase !== 'FINISHED') {
+    if (roomRef && roomData && roomData.phase !== 'FINISHED' && user && user.uid === roomData.adminId) {
         await updateDoc(roomRef, { phase: 'FINISHED', turnEndsAt: null });
     }
   }
 
-  if (allDataLoading || !roomData || !players || !draftPicks) {
+  if (allDataLoading || !roomData || !players || !draftPicks || !characters || !superArts) {
     return (
       <div className="flex min-h-screen w-full flex-col">
         <PageHeader />
@@ -391,12 +420,12 @@ export default function RoomPage() {
   const spectators = players.filter(p => p.team === 'spectator');
 
   const team1Picks = draftPicks.filter(p => p.team === 'team1').map(p => {
-    const character = CHARACTERS.find(c => c.id === p.characterId);
-    return { ...p, ...character };
+    const character = characters.find(c => c.id === p.characterId);
+    return { ...p, name: character?.name || '?', image: character?.image || '' };
   });
   const team2Picks = draftPicks.filter(p => p.team === 'team2').map(p => {
-    const character = CHARACTERS.find(c => c.id === p.characterId);
-    return { ...p, ...character };
+    const character = characters.find(c => c.id === p.characterId);
+    return { ...p, name: character?.name || '?', image: character?.image || '' };
   });
 
   const bannedCharacterIds = draftPicks.map(p => p.characterId);
@@ -460,7 +489,7 @@ export default function RoomPage() {
           <TeamDisplay teamName={roomData.team1Name} teamId="team1" teamLogo={roomData.team1Logo} players={team1Players} picks={team1Picks} isPicking={roomData.currentPicker === 'team1'} maxPlayers={roomData.playersPerTeam} />
           
           <div className="flex flex-col gap-4 items-center justify-center min-h-[300px] lg:min-h-0">
-            {roomData.phase === 'COIN_FLIP' && <CoinFlip onComplete={handleCoinFlipResult} team1Name={roomData.team1Name} team2Name={roomData.team2Name}/>}
+            {roomData.phase === 'COIN_FLIP' && <CoinFlip onComplete={() => handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2')} team1Name={roomData.team1Name} team2Name={roomData.team2Name}/>}
             
             {roomData.phase === 'DRAFTING' && (
                 <CharacterGrid
@@ -554,7 +583,7 @@ export default function RoomPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2"><ShieldAlert className="text-destructive"/> Draft Cancelado</AlertDialogTitle>
                     <AlertDialogDescription>
-                        El draft ha sido cancelado. Serás devuelto al lobby.
+                        El draft ha sido cancelado porque un jugador abandonó la sala. Serás devuelto al lobby.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
