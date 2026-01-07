@@ -66,16 +66,15 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, i
                     justify-content: center;
                     border-radius: 50%;
                     border-width: 4px;
+                    background-color: white;
                 }
                 .front {
-                    background-color: hsl(var(--primary) / 0.1);
-                    border-color: hsl(var(--primary));
-                    color: hsl(var(--primary));
+                    border-color: #f97316; /* orange-500 */
+                    color: #f97316; /* orange-500 */
                 }
                 .back {
-                    background-color: hsl(var(--accent) / 0.1);
-                    border-color: hsl(var(--accent));
-                    color: hsl(var(--accent));
+                    border-color: #8b5cf6; /* purple-500 */
+                    color: #8b5cf6; /* purple-500 */
                     transform: rotateY(180deg);
                 }
                 @keyframes flip {
