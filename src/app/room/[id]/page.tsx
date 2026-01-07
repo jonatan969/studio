@@ -156,7 +156,7 @@ export default function RoomPage() {
   }, [allDataLoading, user, userPlayerInfo, roomData]);
 
   const handleJoin = async (team: 'team1' | 'team2' | 'spectator') => {
-    if (!user || !firestore || !roomData) return;
+    if (!user || !firestore || !roomData || !roomRef) return;
     
     const playerDocRef = doc(firestore, 'rooms', roomId, 'players', user.uid);
     
@@ -246,7 +246,8 @@ export default function RoomPage() {
                 if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
                     await updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null, log: arrayUnion(`Alguien se fue. Reiniciando preparativos.`) });
                 } else {
-                    const winner: TeamId = Math.floor(Math.random() * 2) === 0 ? 'team1' : 'team2';
+                    const seconds = new Date().getSeconds();
+                    const winner: TeamId = seconds % 2 === 0 ? 'team1' : 'team2';
                     await handleCoinFlipResult(winner);
                 }
             }
@@ -626,3 +627,5 @@ export default function RoomPage() {
     </div>
   );
 }
+
+    

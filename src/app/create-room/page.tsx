@@ -55,8 +55,8 @@ export default function CreateRoomPage() {
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
       roomName: 'Mi Sala Increíble',
-      team1Name: 'Equipo Alfa',
-      team2Name: 'Equipo Bravo',
+      team1Name: 'Templarios',
+      team2Name: 'Centinelas',
       playersPerTeam: 3,
       spectatorLimit: 4,
       team1Logo: '',
@@ -241,3 +241,5 @@ export default function CreateRoomPage() {
     </div>
   );
 }
+
+    
