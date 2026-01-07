@@ -118,7 +118,7 @@ export default function AuthPage() {
       <main className="z-20 flex w-full max-w-sm flex-col items-center text-center">
         <Card className="w-full">
             <CardHeader className="items-center">
-                <Image src="https://cdn.discordapp.com/attachments/763207743016009759/1457539983916142818/IconDraftSystem.png?ex=695c5f63&is=695b0de3&hm=35b93fbf8b71785c0118d7fdc963ebbacb2c9a867532d6d3ccc9f15b0e47f550&" alt="KBA Draft Logo" width={48} height={48} className="h-12 w-12 mb-2 text-primary" />
+                <Image src="https://i.imgur.com/O6q1g4v.png" alt="KBA Draft Logo" width={48} height={48} className="h-12 w-12 mb-2 text-primary" />
                 <CardTitle className="font-headline text-3xl">KBA Draft</CardTitle>
                 <CardDescription>Ingresa o regístrate para continuar.</CardDescription>
             </CardHeader>
