@@ -118,7 +118,7 @@ export default function AuthPage() {
       <main className="z-20 flex w-full max-w-sm flex-col items-center text-center">
         <Card className="w-full">
             <CardHeader className="items-center">
-                <Image src="https://i.imgur.com/O6q1g4v.png" alt="KBA Draft Logo" width={48} height={48} className="h-12 w-12 mb-2 text-primary" />
+                <Image src="https://i.imgur.com/C70hibS.png" alt="KBA Draft Logo" width={48} height={48} className="h-12 w-12 mb-2 text-primary" />
                 <CardTitle className="font-headline text-3xl">KBA Draft</CardTitle>
                 <CardDescription>Ingresa o regístrate para continuar.</CardDescription>
             </CardHeader>

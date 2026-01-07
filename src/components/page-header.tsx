@@ -36,13 +36,13 @@ export function PageHeader() {
       <div className="container flex h-16 items-center">
         <div className="mr-4 hidden md:flex">
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <Image src="https://i.imgur.com/O6q1g4v.png" alt="KBA Draft Logo" width={40} height={40} className="h-10 w-10 text-primary" />
+            <Image src="https://i.imgur.com/C70hibS.png" alt="KBA Draft Logo" width={40} height={40} className="h-10 w-10 text-primary" />
             <span className="font-bold font-headline text-lg whitespace-nowrap">KBA DRAFT</span>
           </Link>
         </div>
         <div className="flex w-full items-center justify-between md:justify-end">
           <Link href="/dashboard" className="flex items-center space-x-2 md:hidden">
-             <Image src="https://i.imgur.com/O6q1g4v.png" alt="KBA Draft Logo" width={32} height={32} className="h-8 w-8 text-primary" />
+             <Image src="https://i.imgur.com/C70hibS.png" alt="KBA Draft Logo" width={32} height={32} className="h-8 w-8 text-primary" />
              <span className="font-bold font-headline text-base whitespace-nowrap">KBA DRAFT</span>
           </Link>
           <nav className="flex items-center space-x-1">
