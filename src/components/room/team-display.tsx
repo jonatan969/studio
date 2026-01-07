@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -87,3 +88,5 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
     </Card>
   );
 }
+
+    

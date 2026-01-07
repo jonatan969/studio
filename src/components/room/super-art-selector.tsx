@@ -1,3 +1,4 @@
+
 'use client';
 
 import { SuperArt } from '@/lib/types';
@@ -68,3 +69,5 @@ export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArt
     </div>
   );
 }
+
+    

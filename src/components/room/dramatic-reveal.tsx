@@ -1,11 +1,11 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
-import { SuperArt } from '@/lib/game-data';
 import { Card, CardContent } from '../ui/card';
 import { SuperArtIcon } from './super-art-icon';
-import { DraftPick } from '@/lib/types';
+import { DraftPick, SuperArt } from '@/lib/types';
 import Image from 'next/image';
 
 interface DramaticRevealProps {
@@ -68,3 +68,5 @@ export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: D
     </div>
   );
 }
+
+    
