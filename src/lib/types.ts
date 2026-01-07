@@ -64,4 +64,5 @@ export interface Room {
     currentPicker?: 'team1' | 'team2' | null;
     turn?: number;
     turnEndsAt?: number | null; // Timestamp for when the current turn ends
+    log?: string[];
 }

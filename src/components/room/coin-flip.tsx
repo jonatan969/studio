@@ -6,40 +6,19 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 interface CoinFlipProps {
-    onComplete: (winner: 'team1' | 'team2') => void;
     team1Name: string;
     team2Name: string;
     team1Logo?: string | null;
     team2Logo?: string | null;
 }
 
-export function CoinFlip({ onComplete, team1Name, team2Name, team1Logo, team2Logo }: CoinFlipProps) {
+export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo }: CoinFlipProps) {
     const [isFlipping, setIsFlipping] = useState(false);
-    const [result, setResult] = useState<'team1' | 'team2' | null>(null);
-
+    
     useEffect(() => {
         setIsFlipping(true);
-        const winner = Math.random() < 0.5 ? 'team1' : 'team2';
-        
-        const flipTimeout = setTimeout(() => {
-            setResult(winner);
-            setIsFlipping(false);
-        }, 3000); // Animation duration: 3 seconds
-
-        return () => {
-            clearTimeout(flipTimeout);
-        };
+        // The animation is purely visual. The winner is decided in the parent component.
     }, []);
-
-    useEffect(() => {
-        if (result) {
-            // Wait 2 seconds after showing the result before moving on
-            const completeTimeout = setTimeout(() => {
-                onComplete(result);
-            }, 2000);
-            return () => clearTimeout(completeTimeout);
-        }
-    }, [result, onComplete]);
 
     const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: 'team1' | 'team2'}) => {
         const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
@@ -87,7 +66,7 @@ export function CoinFlip({ onComplete, team1Name, team2Name, team1Logo, team2Log
                 }
             `}</style>
             <div className="coin-container">
-                <div className={cn("coin", result && "transition-transform duration-500", result === 'team1' ? 'rotate-y-0' : 'rotate-y-180' )}>
+                <div className={cn("coin")}>
                     <div className="coin-face front">
                         <CoinFace teamLogo={team1Logo} teamId="team1"/>
                     </div>
@@ -97,7 +76,7 @@ export function CoinFlip({ onComplete, team1Name, team2Name, team1Logo, team2Log
                 </div>
             </div>
             <p className="font-headline text-xl sm:text-2xl mt-4 text-center">
-                {result ? `¡${result === 'team1' ? team1Name : team2Name} elige primero!` : 'Lanzando la moneda...'}
+                Lanzando la moneda...
             </p>
         </div>
     );

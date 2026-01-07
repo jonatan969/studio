@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useReducer, useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { TeamDisplay } from '@/components/room/team-display';
@@ -15,7 +15,7 @@ import { CoinFlip } from '@/components/room/coin-flip';
 import { SuperArtSpectatorView } from '@/components/room/super-art-spectator-view';
 import { useDoc, useUser, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import type { Room, RoomPlayer, DraftPick, Character, SuperArt } from '@/lib/types';
-import { doc, updateDoc, setDoc, deleteDoc, collection } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc, collection, arrayUnion } from 'firebase/firestore';
 import { JoinRoomDialog } from '@/components/room/join-room-dialog';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -29,20 +29,6 @@ import { useGameData } from '@/lib/game-data';
 
 type TeamId = 'team1' | 'team2';
 
-interface DraftState {
-  log: string[];
-}
-
-function draftReducer(state: DraftState, action: {type: 'LOG', message: string}): DraftState {
-  if (state.log[0] === action.message) return state;
-  switch (action.type) {
-    case 'LOG':
-      return { ...state, log: [action.message, ...state.log] };
-    default:
-      return state;
-  }
-}
-
 export default function RoomPage() {
   const router = useRouter();
   const params = useParams();
@@ -51,7 +37,6 @@ export default function RoomPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  const [state, dispatch] = useReducer(draftReducer, { log: ['Bienvenido a la sala de draft.'] });
   const [isJoinDialogOpen, setJoinDialogOpen] = React.useState(false);
   const [isSwitchTeamDialogOpen, setSwitchTeamDialogOpen] = React.useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -88,6 +73,14 @@ export default function RoomPage() {
     }
   }, [roomError, router, toast]);
 
+  const appendToLog = useCallback(async (message: string) => {
+    if (roomRef && roomData?.log && !roomData.log.includes(message)) {
+      await updateDoc(roomRef, {
+        log: arrayUnion(message)
+      });
+    }
+  }, [roomRef, roomData?.log]);
+
   const handleLeaveRoom = useCallback(async () => {
     if (!user || !firestore || !userPlayerInfo) return;
     try {
@@ -107,27 +100,34 @@ export default function RoomPage() {
     }
   }, [user, firestore, roomId, userPlayerInfo, router, toast]);
 
-  // Admin logic: Cancel room if admin leaves
+  // Admin logic: Cancel room if admin leaves or a player leaves mid-draft
   React.useEffect(() => {
     if (allDataLoading || !roomData || !user || !players || !roomRef) return;
     
-    const adminIsGone = !players.some(p => p.uid === roomData.adminId);
+    // Condition to check for cancellation
+    let shouldCancel = false;
     
-    // If the admin is the one leaving, the room is cancelled
-    if (adminIsGone && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
-      updateDoc(roomRef, { phase: 'CANCELED' });
-      return;
+    // Check if admin is gone
+    const adminIsGone = !players.some(p => p.uid === roomData.adminId);
+    if(adminIsGone){
+        shouldCancel = true;
     }
 
-    // If a non-spectator player leaves after the draft has started, cancel it
-    if (roomData.phase !== 'PREP' && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
-        const currentNonSpectatorCount = players.filter(p => p.team !== 'spectator').length;
+    // Check if a non-spectator player left after prep-phase
+    if (roomData.phase !== 'PREP' && roomData.phase !== 'FINISHED' && roomData.phase !== 'CANCELED') {
         const requiredPlayerCount = roomData.playersPerTeam * 2;
+        const currentNonSpectatorCount = players.filter(p => p.team !== 'spectator').length;
         if (currentNonSpectatorCount < requiredPlayerCount) {
-            updateDoc(roomRef, { phase: 'CANCELED' });
+            shouldCancel = true;
+            appendToLog('Un jugador abandonó. El draft ha sido cancelado.');
         }
     }
-  }, [players, roomData, user, allDataLoading, roomRef]);
+    
+    if (shouldCancel && roomData.phase !== 'CANCELED' && roomData.phase !== 'FINISHED') {
+        updateDoc(roomRef, { phase: 'CANCELED' });
+        return;
+    }
+  }, [players, roomData, user, allDataLoading, roomRef, appendToLog]);
 
   React.useEffect(() => {
     const calculateTimeLeft = () => {
@@ -166,6 +166,7 @@ export default function RoomPage() {
     try {
       await setDoc(playerDocRef, newPlayer);
       setJoinDialogOpen(false);
+      appendToLog(`${user.displayName} se ha unido como ${team}.`);
       toast({title: `Te uniste como ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData?.team1Name : roomData?.team2Name}`}`});
     } catch (error: any) {
       console.error("Error joining room: ", error);
@@ -186,6 +187,7 @@ export default function RoomPage() {
     try {
         await setDoc(playerDocRef, updatedPlayer, { merge: true });
         setSwitchTeamDialogOpen(false);
+        appendToLog(`${user.displayName} ha cambiado al equipo ${team}.`);
         toast({title: `Te cambiaste a ${team === 'spectator' ? 'espectador' : `al equipo ${team === 'team1' ? roomData?.team1Name : roomData?.team2Name}`}`});
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error al cambiar de equipo', description: error.message });
@@ -204,7 +206,7 @@ export default function RoomPage() {
         const team2Players = players.filter(p => p.team === 'team2').length;
         if (team1Players === roomData.playersPerTeam && team2Players === roomData.playersPerTeam) {
             updateDoc(roomRef, { phase: 'COIN_FLIP', turnEndsAt: Date.now() + DRAFT_START_TIMER * 1000 });
-            dispatch({type: 'LOG', message: `¡Los equipos están completos! La cuenta atrás ha comenzado.`});
+            appendToLog(`¡Los equipos están completos! La cuenta atrás ha comenzado.`);
         }
       }
 
@@ -213,7 +215,7 @@ export default function RoomPage() {
         const team2Players = players.filter(p => p.team === 'team2').length;
         if (team1Players < roomData.playersPerTeam || team2Players < roomData.playersPerTeam) {
             updateDoc(roomRef, { phase: 'PREP', turnEndsAt: null });
-            dispatch({type: 'LOG', message: `Alguien se fue. Reiniciando cuenta atrás.`});
+            appendToLog(`Alguien se fue. Reiniciando cuenta atrás.`);
         }
       }
       
@@ -257,18 +259,18 @@ export default function RoomPage() {
                            };
                            const pickDocRef = doc(picksRef, playerToPick.uid);
                            setDoc(pickDocRef, pickData).catch(e => console.error("Error auto-picking character:", e));
-                           dispatch({type: 'LOG', message: `¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`});
+                           appendToLog(`¡Se acabó el tiempo! ${randomCharacter.name} fue auto-seleccionado para ${playerToPick.nickname}.`);
                       }
                   }
                   break;
               case 'SUPER_ART':
                    updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
-                   dispatch({type: 'LOG', message: '¡El tiempo de selección de Super Art ha terminado! Revelando elecciones...'});
+                   appendToLog('¡El tiempo de selección de Super Art ha terminado! Revelando elecciones...');
                    break;
           }
       }
 
-  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef]);
+  }, [roomData, allDataLoading, timeLeft, characters, user, firestore, roomRef, draftPicks, players, picksRef, appendToLog]);
 
   // Turn progression logic
   React.useEffect(() => {
@@ -289,7 +291,7 @@ export default function RoomPage() {
 
          if (newTurn >= roomData.pickOrder.length || nonSpectatorPicks >= totalPlayers) {
               updateDoc(roomRef, { phase: 'SUPER_ART', turnEndsAt: Date.now() + SUPER_ART_PICK_TIME * 1000, currentPicker: null });
-              dispatch({type: 'LOG', message: '¡Todos los personajes seleccionados! Hora de elegir los Super Arts.'});
+              appendToLog('¡Todos los personajes seleccionados! Hora de elegir los Super Arts.');
          } else {
              const nextTurnInfo = roomData.pickOrder[newTurn];
              updateDoc(roomRef, { 
@@ -298,10 +300,10 @@ export default function RoomPage() {
                 turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
             });
              const nextTeamName = nextTurnInfo.team === 'team1' ? roomData.team1Name : roomData.team2Name;
-             dispatch({type: 'LOG', message: `Es el turno de ${nextTeamName} para elegir.`});
+             appendToLog(`Es el turno de ${nextTeamName} para elegir.`);
          }
     }
-  }, [roomData, roomRef, draftPicks, allDataLoading, players, user]);
+  }, [roomData, roomRef, draftPicks, allDataLoading, players, user, appendToLog]);
 
     React.useEffect(() => {
         if (timeLeft <= 0 && roomData?.phase === 'DRAFTING' && preselectedCharacter && canPick) {
@@ -343,7 +345,7 @@ export default function RoomPage() {
         await setDoc(pickDocRef, pickData);
 
         toast({ title: '¡Personaje Elegido!', description: `Elegiste a ${character.name}.` });
-        dispatch({type: 'LOG', message: `${userPlayerInfo.nickname} eligió a ${character.name}.`});
+        appendToLog(`${userPlayerInfo.nickname} eligió a ${character.name}.`);
         setPreselectedCharacter(null);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error al elegir', description: error.message });
@@ -373,7 +375,7 @@ export default function RoomPage() {
         const isAdmin = user.uid === roomData.adminId;
         if (isAdmin && nonSpectatorPlayers && picksWithSuperArt.length >= nonSpectatorPlayers.length) { 
             await updateDoc(roomRef, { phase: 'REVEAL', turnEndsAt: null });
-            dispatch({type: 'LOG', message: '¡Todos los Super Arts seleccionados! ¡La revelación final!'});
+            appendToLog('¡Todos los Super Arts seleccionados! ¡La revelación final!');
         }
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error al seleccionar Super Art', description: error.message });
@@ -395,7 +397,7 @@ export default function RoomPage() {
                 turnEndsAt: Date.now() + DRAFT_PICK_TIME * 1000,
             });
             const winnerTeamName = winner === 'team1' ? roomData.team1Name : roomData.team2Name;
-            dispatch({type: 'LOG', message: `¡${winnerTeamName} ganó el sorteo y elegirá primero!`});
+            appendToLog(`¡${winnerTeamName} ganó el sorteo y elegirá primero!`);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error de Sincronización', description: error.message });
         }
@@ -495,7 +497,6 @@ export default function RoomPage() {
           <div className="flex flex-col gap-4 items-center justify-center min-h-[300px] lg:min-h-0">
             {roomData.phase === 'COIN_FLIP' && (
                 <CoinFlip 
-                    onComplete={() => handleCoinFlipResult(Math.random() < 0.5 ? 'team1' : 'team2')} 
                     team1Name={roomData.team1Name} 
                     team2Name={roomData.team2Name}
                     team1Logo={roomData.team1Logo}
@@ -570,7 +571,7 @@ export default function RoomPage() {
                 <CardContent>
                     <ScrollArea className="h-24 w-full">
                         <div className="space-y-2 text-sm pr-4">
-                            {state.log.map((log, i) => <p key={i}>{log}</p>)}
+                            {roomData.log?.slice().reverse().map((log, i) => <p key={i}>{log}</p>)}
                         </div>
                     </ScrollArea>
                 </CardContent>

@@ -91,6 +91,7 @@ export default function CreateRoomPage() {
             playersPerTeam: data.playersPerTeam,
             spectatorLimit: data.spectatorLimit,
             phase: 'PREP',
+            log: ['Sala creada. Esperando jugadores...'],
         };
         batch.set(newRoomRef, roomData);
 
