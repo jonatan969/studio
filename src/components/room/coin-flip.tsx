@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -25,12 +26,11 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, i
         return () => clearTimeout(timer);
     }, []);
 
-    const CoinFace = ({ teamLogo, teamId }: { teamLogo?: string | null, teamId: TeamId }) => {
-        const teamColor = teamId === 'team1' ? 'hsl(var(--primary))' : 'hsl(var(--accent))';
+    const CoinFace = ({ teamLogo, teamName }: { teamLogo?: string | null, teamName: string }) => {
         if (teamLogo) {
-            return <Image src={teamLogo} alt="Team Logo" fill className="object-contain p-4" />;
+            return <Image src={teamLogo} alt={`${teamName} Logo`} fill className="object-contain p-4" />;
         }
-        return <VersusLogo className="w-16 h-16" style={{ color: teamColor }} />;
+        return <VersusLogo className="w-16 h-16" />;
     };
 
     // Determine the final rotation based on the winner
@@ -70,10 +70,12 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, i
                 .front {
                     background-color: hsl(var(--primary) / 0.1);
                     border-color: hsl(var(--primary));
+                    color: hsl(var(--primary));
                 }
                 .back {
                     background-color: hsl(var(--accent) / 0.1);
                     border-color: hsl(var(--accent));
+                    color: hsl(var(--accent));
                     transform: rotateY(180deg);
                 }
                 @keyframes flip {
@@ -84,10 +86,10 @@ export function CoinFlip({ team1Name, team2Name, team1Logo, team2Logo, winner, i
             <div className="coin-container">
                 <div className="coin" style={animationStyle}>
                     <div className="coin-face front">
-                        <CoinFace teamLogo={team1Logo} teamId="team1"/>
+                        <CoinFace teamLogo={team1Logo} teamName={team1Name}/>
                     </div>
                     <div className="coin-face back">
-                       <CoinFace teamLogo={team2Logo} teamId="team2"/>
+                       <CoinFace teamLogo={team2Logo} teamName={team2Name}/>
                     </div>
                 </div>
             </div>
