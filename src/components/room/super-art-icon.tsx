@@ -19,7 +19,7 @@ export function SuperArtIcon({ art, className }: SuperArtIconProps) {
             <span className="absolute text-3xl text-orange-400 font-serif" style={{ textShadow: '0 0 8px #e69500' }}>S</span>
             <span 
                 className={`absolute text-base ${colorClass}`} 
-                style={{ top: '55%', left: '55%', transform: 'translate(-50%, -50%)', textShadow: '1px 1px 2px black' }}
+                style={{ top: '65%', left: '65%', transform: 'translate(-50%, -50%)', textShadow: '1px 1px 2px black' }}
             >
                 {art.roman}
             </span>
