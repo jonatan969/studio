@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -148,7 +149,7 @@ export default function CreateRoomPage() {
                   </div>
                   <div className="space-y-2">
                      <Label htmlFor="team1Logo">URL del Logo del Equipo 1</Label>
-                     <Input id="team1Logo" {...register('team1Logo')} placeholder="https://ejemplo.com/logo1.png" />
+                     <Input id="team1Logo" {...register('team1Logo')} placeholder="https://ejemplo.com/logo1.png" autoComplete="off" />
                      {errors.team1Logo && <p className="text-destructive text-sm">{errors.team1Logo.message}</p>}
                   </div>
                 </div>
@@ -162,7 +163,7 @@ export default function CreateRoomPage() {
                   </div>
                    <div className="space-y-2">
                      <Label htmlFor="team2Logo">URL del Logo del Equipo 2</Label>
-                     <Input id="team2Logo" {...register('team2Logo')} placeholder="https://ejemplo.com/logo2.png" />
+                     <Input id="team2Logo" {...register('team2Logo')} placeholder="https://ejemplo.com/logo2.png" autoComplete="off" />
                      {errors.team2Logo && <p className="text-destructive text-sm">{errors.team2Logo.message}</p>}
                   </div>
                 </div>

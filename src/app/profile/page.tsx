@@ -123,6 +123,7 @@ export default function ProfilePage() {
                   value={photoURL}
                   onChange={(e) => setPhotoURL(e.target.value)}
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
             </div>
