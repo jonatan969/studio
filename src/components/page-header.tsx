@@ -54,7 +54,7 @@ export function PageHeader() {
                   <Button variant="ghost" className="flex items-center gap-2 p-1 h-auto rounded-full">
                     <Avatar className="h-8 w-8">
                        {user.photoURL ? (
-                          <ImgurImage imgurUrl={user.photoURL} alt={user.displayName || ''} fill className="rounded-full object-cover"/>
+                          <ImgurImage src={user.photoURL} alt={user.displayName || ''} fill className="rounded-full object-cover"/>
                        ) : (
                           <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                        )}

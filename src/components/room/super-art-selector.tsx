@@ -46,7 +46,7 @@ export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArt
                 <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-accent z-10" />
               )}
                <div className="relative h-32 w-full mb-4 rounded-md overflow-hidden">
-                <ImgurImage imgurUrl={art.image} alt={art.name} fill className="object-cover img-pixelated" />
+                <ImgurImage src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
               </div>
               <h3 className="font-headline text-base md:text-lg text-accent font-bold mb-1">{art.name}</h3>
               <p className="text-muted-foreground text-xs">{art.description}</p>

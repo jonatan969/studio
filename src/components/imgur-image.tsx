@@ -26,29 +26,46 @@ const getImgurId = (url: string): string | null => {
 };
 
 interface ImgurImageProps extends Omit<ImageProps, 'src' | 'alt'> {
-  imgurUrl: string;
+  src: string;
   alt: string;
 }
 
-export function ImgurImage({ imgurUrl, alt, ...props }: ImgurImageProps) {
-  const imgurId = getImgurId(imgurUrl);
+export function ImgurImage({ src, alt, ...props }: ImgurImageProps) {
+  let finalSrc = src;
 
-  if (!imgurId) {
-    // Retornar un placeholder o un mensaje de error si la URL no es válida
-    return (
+  // Solo procesar si es una URL de Imgur
+  if (src && src.includes('imgur.com')) {
+      const imgurId = getImgurId(src);
+      if (imgurId) {
+          finalSrc = `https://i.imgur.com/${imgurId}.png`;
+      } else {
+          // Si parece una URL de Imgur pero no se puede procesar,
+          // es mejor no mostrar una imagen rota.
+          // Opcional: retornar un placeholder. Por ahora, usamos el src original.
+          finalSrc = src; 
+      }
+  }
+
+  // Si finalSrc está vacío o no es una URL válida, Image dará un error.
+  // Es mejor no renderizar nada si no hay una fuente válida.
+  if (!finalSrc) {
+       return (
         <div style={{ width: props.width, height: props.height }} className="bg-muted flex items-center justify-center text-xs text-muted-foreground">
-            URL inválida
+            No Image
         </div>
     );
   }
 
-  const directImageUrl = `https://i.imgur.com/${imgurId}.png`;
-
   return (
     <Image
-      src={directImageUrl}
+      src={finalSrc}
       alt={alt}
       {...props}
+      // Añadimos un onError para manejar casos donde la URL final aún no es válida
+      onError={(e) => {
+          // Opcional: Podrías establecer una imagen de fallback
+          e.currentTarget.style.display = 'none'; // Ocultar la imagen rota
+      }}
     />
   );
 }

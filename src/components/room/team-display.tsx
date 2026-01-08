@@ -56,12 +56,15 @@ export function TeamDisplay({ teamName, teamId, teamLogo, players, picks, isPick
               {player ? (
                 <>
                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 border-2 border-transparent">
-                    <AvatarImage src={player.photoURL || undefined} />
-                    <AvatarFallback>{getInitials(player.nickname || '')}</AvatarFallback>
+                    {player.photoURL ? (
+                      <ImgurImage src={player.photoURL} alt={player.nickname} fill className="object-cover rounded-full" />
+                    ) : (
+                      <AvatarFallback>{getInitials(player.nickname || '')}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="relative h-full aspect-square flex-shrink-0 rounded-md overflow-hidden bg-muted animate-in fade-in duration-500">
                     {pick ? (
-                      <ImgurImage imgurUrl={pick.image} alt={pick.name} fill className="object-cover img-pixelated" />
+                      <ImgurImage src={pick.image} alt={pick.name} fill className="object-cover img-pixelated" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted/30">
                         <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/50" />

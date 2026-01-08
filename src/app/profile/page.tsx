@@ -113,7 +113,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4 sm:gap-6">
               <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                 {photoURL ? (
-                    <ImgurImage imgurUrl={photoURL} alt={nickname || ''} fill className="rounded-full object-cover" />
+                    <ImgurImage src={photoURL} alt={nickname || ''} fill className="rounded-full object-cover" />
                 ) : (
                     <AvatarFallback className="text-3xl">{getInitials(nickname || '')}</AvatarFallback>
                 )}
