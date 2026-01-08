@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { PageHeader } from '@/components/page-header';
 import { Loader2, PlusCircle, Save, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,11 +17,12 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc } from 'firebase/firestore';
-import type { Character, SuperArt } from '@/lib/types';
+import { doc, setDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
+import type { Character, SuperArt, Room } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ImgurImage } from '@/components/imgur-image';
 
 const superArtSchema = z.object({
   id: z.string(),
@@ -51,13 +52,21 @@ export default function AdminPage() {
 
     const [isFormOpen, setFormOpen] = useState(false);
     const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
-
+    const [isCleaning, setIsCleaning] = useState(false);
 
     const gameDataRef = useMemoFirebase(() => firestore ? doc(firestore, 'game_data', 'static') : null, [firestore]);
     const { data: gameData, isLoading: isGameDataLoading } = useDoc<{ characters: Character[], super_arts: SuperArt[] }>(gameDataRef);
     
     const characters = gameData?.characters || [];
     const superArts = gameData?.super_arts || [];
+
+    // Query for closed rooms
+    const closedRoomsQuery = useMemoFirebase(() => firestore ? query(
+        collection(firestore, 'rooms'),
+        where('phase', 'in', ['FINISHED', 'CANCELED'])
+    ) : null, [firestore]);
+    const { data: closedRooms, isLoading: isLoadingClosedRooms, forceRefetch: refetchClosedRooms } = useCollection<Room>(closedRoomsQuery);
+
 
     const { register, control, handleSubmit, reset, formState: { errors } } = useForm<CharacterFormData>({
         resolver: zodResolver(characterSchema),
@@ -90,7 +99,7 @@ export default function AdminPage() {
                 name: character.name,
                 role: character.role,
                 image: character.image,
-                superArts: characterSuperArts.length === 3 ? characterSuperArts : [
+                superArts: characterSuperArts.length === 3 ? characterSuperArts.map(sa => ({...sa})) : [
                   { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'red', roman: 'I' },
                   { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'yellow', roman: 'II' },
                   { id: `sa-${uuidv4()}`, characterId: character.id, name: '', description: '', image: '', color: 'blue', roman: 'III' },
@@ -98,7 +107,7 @@ export default function AdminPage() {
             });
         } else {
             reset({
-                id: '',
+                id: `char-${uuidv4()}`,
                 name: '',
                 role: undefined,
                 image: '',
@@ -118,7 +127,7 @@ export default function AdminPage() {
         let currentCharacters = gameData?.characters || [];
         let currentSuperArts = gameData?.super_arts || [];
 
-        const characterId = editingCharacter?.id || `char-${uuidv4()}`;
+        const characterId = editingCharacter?.id || data.id || `char-${uuidv4()}`;
 
         const characterData: Character = {
             id: characterId,
@@ -129,21 +138,17 @@ export default function AdminPage() {
         
         const newSuperArts = data.superArts.map((sa, index) => ({ 
             ...sa, 
-            id: sa.id || `sa-${uuidv4()}`, // Ensure ID exists
+            id: sa.id || `sa-${uuidv4()}`, 
             characterId 
         }));
         
         let updatedCharacters;
         let updatedSuperArts;
 
-        if (editingCharacter) { // Editing existing character
+        if (editingCharacter) { 
             updatedCharacters = currentCharacters.map(c => c.id === characterId ? characterData : c);
-            
-            // Remove old super arts of this character and add the new/updated ones
-            updatedSuperArts = currentSuperArts.filter(sa => sa.characterId !== characterId);
-            updatedSuperArts.push(...newSuperArts);
-            
-        } else { // Adding new character
+            updatedSuperArts = currentSuperArts.filter(sa => sa.characterId !== characterId).concat(newSuperArts);
+        } else { 
             updatedCharacters = [...currentCharacters, characterData];
             updatedSuperArts = [...currentSuperArts, ...newSuperArts];
         }
@@ -169,6 +174,56 @@ export default function AdminPage() {
             toast({ variant: 'destructive', title: 'Error al eliminar', description: error.message });
         }
     };
+
+    const deleteRoomAndSubcollections = async (roomId: string) => {
+        if (!firestore) return;
+        const batch = writeBatch(firestore);
+
+        // Delete subcollections first
+        const playersRef = collection(firestore, 'rooms', roomId, 'players');
+        const picksRef = collection(firestore, 'rooms', roomId, 'picks');
+        
+        const playersSnap = await getDocs(playersRef);
+        playersSnap.forEach(doc => batch.delete(doc.ref));
+
+        const picksSnap = await getDocs(picksRef);
+        picksSnap.forEach(doc => batch.delete(doc.ref));
+
+        // Delete the room doc itself
+        const roomDocRef = doc(firestore, 'rooms', roomId);
+        batch.delete(roomDocRef);
+
+        await batch.commit();
+    };
+
+    const handleCleanSingleRoom = async (roomId: string) => {
+        try {
+            await deleteRoomAndSubcollections(roomId);
+            toast({ title: 'Sala eliminada', description: `La sala ${roomId} ha sido eliminada.` });
+            refetchClosedRooms();
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error al eliminar la sala', description: error.message });
+        }
+    };
+    
+    const handleCleanAllRooms = async () => {
+        if (!closedRooms || closedRooms.length === 0) return;
+        setIsCleaning(true);
+        try {
+            for (const room of closedRooms) {
+                if (room.id) {
+                    await deleteRoomAndSubcollections(room.id);
+                }
+            }
+            toast({ title: 'Limpieza Completa', description: `${closedRooms.length} salas cerradas han sido eliminadas.` });
+            refetchClosedRooms();
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error en la limpieza masiva', description: error.message });
+        } finally {
+            setIsCleaning(false);
+        }
+    };
+
 
     if (isUserLoading || !user || user.role !== 'admin' || isGameDataLoading) {
         return (
@@ -275,6 +330,46 @@ export default function AdminPage() {
                     </Dialog>
                 </div>
 
+                 <Card className="mb-6 sm:mb-8">
+                    <CardHeader>
+                        <CardTitle>Gestión de Salas Cerradas</CardTitle>
+                         <CardDescription>
+                            Aquí puedes eliminar salas antiguas que estén finalizadas o canceladas para mantener limpia la base de datos.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingClosedRooms ? (
+                            <Loader2 className="animate-spin" />
+                        ) : !closedRooms || closedRooms.length === 0 ? (
+                            <p>No hay salas cerradas para limpiar.</p>
+                        ) : (
+                           <div className="space-y-2">
+                                {closedRooms.map(room => (
+                                    <div key={room.id} className="flex items-center justify-between p-2 rounded-md border">
+                                        <div>
+                                            <p className="font-semibold">{room.name}</p>
+                                            <p className="text-sm text-muted-foreground">ID: {room.id} - Estado: {room.phase}</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => room.id && handleCleanSingleRoom(room.id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                    </div>
+                                ))}
+                           </div>
+                        )}
+                    </CardContent>
+                    <CardFooter>
+                         <Button 
+                            variant="destructive" 
+                            onClick={handleCleanAllRooms}
+                            disabled={isCleaning || !closedRooms || closedRooms.length === 0}
+                         >
+                            {isCleaning ? <Loader2 className="animate-spin mr-2" /> : <Trash2 className="mr-2"/>}
+                            Eliminar Todas las Salas Cerradas ({closedRooms?.length || 0})
+                         </Button>
+                    </CardFooter>
+                </Card>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Gestión de Personajes y Super Arts</CardTitle>
@@ -293,7 +388,7 @@ export default function AdminPage() {
                                     <AccordionItem value={character.id} key={character.id}>
                                         <AccordionTrigger>
                                             <div className="flex items-center gap-4 w-full">
-                                                <Image src={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
+                                                <ImgurImage imgurUrl={character.image} alt={character.name} width={40} height={40} className="rounded-md object-cover img-pixelated" />
                                                 <span className="font-bold">{character.name}</span>
                                                 <span className="text-sm text-muted-foreground">({character.role})</span>
                                             </div>
@@ -311,7 +406,7 @@ export default function AdminPage() {
                                                     {getCharacterSuperArts(character.id).map(art => (
                                                         <div key={art.id} className="p-3 border rounded-md space-y-2 bg-secondary/50">
                                                             <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
-                                                                <Image src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
+                                                                <ImgurImage imgurUrl={art.image} alt={art.name} fill className="object-cover img-pixelated" />
                                                             </div>
                                                             <p className="font-mono font-bold text-accent">Super Art {art.roman}: {art.name}</p>
                                                             <p className="text-sm text-muted-foreground">{art.description}</p>
@@ -334,7 +429,3 @@ export default function AdminPage() {
         </div>
     );
 }
-
-    
-
-    
