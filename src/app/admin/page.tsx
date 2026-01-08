@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { PageHeader } from '@/components/page-header';
 import { Loader2, PlusCircle, Save, Trash2, Edit } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -113,7 +113,6 @@ export default function AdminPage() {
                 image: '',
                 superArts: [
                   { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'red', roman: 'I' },
-                  { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'yellow', roman: 'II' },
                   { id: `sa-${uuidv4()}`, characterId: '', name: '', description: '', image: '', color: 'blue', roman: 'III' },
                 ]
             });
@@ -429,3 +428,5 @@ export default function AdminPage() {
         </div>
     );
 }
+
+    
