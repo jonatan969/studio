@@ -15,6 +15,7 @@ import { useUser, useAuth, useFirestore } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
+import { ImgurImage } from '@/components/imgur-image';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -111,8 +112,11 @@ export default function ProfilePage() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4 sm:gap-6">
               <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
-                <AvatarImage src={photoURL || undefined} alt={nickname || ''} />
-                <AvatarFallback className="text-3xl">{getInitials(nickname || '')}</AvatarFallback>
+                {photoURL ? (
+                    <ImgurImage imgurUrl={photoURL} alt={nickname || ''} fill className="rounded-full object-cover" />
+                ) : (
+                    <AvatarFallback className="text-3xl">{getInitials(nickname || '')}</AvatarFallback>
+                )}
               </Avatar>
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="picture-url">URL de Foto de Perfil</Label>
