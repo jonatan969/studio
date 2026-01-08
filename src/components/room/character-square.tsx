@@ -2,9 +2,9 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import { Character } from '@/lib/types';
 import { CheckCircle } from 'lucide-react';
+import { ImgurImage } from '../imgur-image';
 
 interface CharacterSquareProps {
   character: Character;
@@ -22,7 +22,7 @@ export function CharacterSquare({ character, isPicked, isPreselected, onClick }:
       )}
       onClick={!isPicked ? onClick : undefined}
     >
-        <Image src={character.image} alt={character.name} fill className="object-cover img-pixelated" />
+        <ImgurImage imgurUrl={character.image} alt={character.name} fill className="object-cover img-pixelated" />
         <div className={cn(
           'absolute inset-0 bg-black/50 transition-all duration-300',
           isPicked ? 'opacity-100' : 'opacity-0 group-hover:opacity-20'
@@ -44,5 +44,3 @@ export function CharacterSquare({ character, isPicked, isPreselected, onClick }:
     </div>
   );
 }
-
-    
