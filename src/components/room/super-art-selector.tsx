@@ -7,7 +7,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { cn } from '@/lib/utils';
 import { CheckCircle } from 'lucide-react';
-import Image from 'next/image';
+import { ImgurImage } from '../imgur-image';
 
 interface SuperArtSelectorProps {
   superArts: SuperArt[];
@@ -46,10 +46,10 @@ export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArt
                 <CheckCircle className="absolute top-2 right-2 h-5 w-5 text-accent z-10" />
               )}
                <div className="relative h-32 w-full mb-4 rounded-md overflow-hidden">
-                <Image src={art.image} alt={art.name} fill className="object-cover img-pixelated" />
+                <ImgurImage imgurUrl={art.image} alt={art.name} fill className="object-cover img-pixelated" />
               </div>
               <h3 className="font-headline text-base md:text-lg text-accent font-bold mb-1">{art.name}</h3>
-              <p className="text-muted-foreground text-xs md:text-sm">{art.description}</p>
+              <p className="text-muted-foreground text-xs">{art.description}</p>
             </div>
           ))}
         </CardContent>
@@ -69,5 +69,3 @@ export function SuperArtSelector({ superArts, onSelect, isSubmitting }: SuperArt
     </div>
   );
 }
-
-    
