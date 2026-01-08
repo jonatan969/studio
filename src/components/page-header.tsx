@@ -16,7 +16,6 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { ChevronDown, LogOut, User as UserIcon, Shield } from 'lucide-react';
 import { useAuth, useUser } from '@/firebase';
-import { ImgurImage } from './imgur-image';
 
 export function PageHeader() {
   const router = useRouter();
@@ -53,11 +52,8 @@ export function PageHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 p-1 h-auto rounded-full">
                     <Avatar className="h-8 w-8">
-                       {user.photoURL ? (
-                          <ImgurImage src={user.photoURL} alt={user.displayName || ''} fill className="rounded-full object-cover"/>
-                       ) : (
-                          <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-                       )}
+                       <AvatarImage src={user.photoURL || undefined} alt={user.displayName || ''} />
+                       <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                     </Avatar>
                     <span className="hidden md:inline-block">{user.displayName}</span>
                     <ChevronDown className="h-4 w-4 hidden md:block" />
