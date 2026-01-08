@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { SuperArtIcon } from './super-art-icon';
 import { DraftPick, SuperArt } from '@/lib/types';
-import Image from 'next/image';
+import { ImgurImage } from '../imgur-image';
 
 interface DramaticRevealProps {
   team1Name: string;
@@ -31,7 +31,7 @@ export function DramaticReveal({ team1Name, team2Name, allPicks, onComplete }: D
                                 <Card key={index} className="bg-card/80 p-3 sm:p-4 rounded-lg flex justify-between items-center">
                                     <div className='flex items-center gap-3 sm:gap-4'>
                                         <div className='relative w-10 h-10 sm:w-12 sm:h-12 rounded-md overflow-hidden flex-shrink-0'>
-                                            <Image src={pick.image} alt={pick.name} fill className='object-cover img-pixelated' />
+                                            <ImgurImage imgurUrl={pick.image} alt={pick.name} fill className='object-cover img-pixelated' />
                                         </div>
                                         <div>
                                             <p className="font-bold text-base sm:text-lg">{pick.name}</p>
